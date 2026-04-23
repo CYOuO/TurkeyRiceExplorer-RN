@@ -16,7 +16,9 @@ const MENU: MenuItem[] = [
     params: { screen: 'RestaurantInfo' } },
   { key: 'Favorites',  label: '❤️  我的收藏',   screen: 'Favorites' },
   { key: 'Diary',      label: '📔  雞肉飯日記', screen: 'Diary' },
+  { key: 'Expense',    label: '💰  雞肉飯記帳本', screen: 'Expense' },
   { key: 'Random',     label: '🎲  隨機選店',   screen: 'Random' },
+  { key: 'FlipGame',   label: '🃏  記憶大考驗', screen: 'FlipGame' },
 ];
 
 export default function DrawerContent(props: DrawerContentComponentProps) {
@@ -37,7 +39,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
   return (
     <DrawerContentScrollView {...props} style={{ backgroundColor: colors.drawerBg }}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { backgroundColor: '#B8860B' }]}>
         <Text style={styles.emoji}>🦃</Text>
         <Text style={styles.title}>Turkey Rice</Text>
         <Text style={styles.sub}>嘉義火雞肉飯探索器</Text>

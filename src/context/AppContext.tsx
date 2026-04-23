@@ -16,6 +16,15 @@ export interface DiaryEntry {
   photoUri: string | null;
 }
 
+export interface ExpenseEntry {
+  id: string;
+  createdAt: string;     // 記帳日期
+  restaurantId: string;  // 關聯的店家 ID
+  restaurantName: string;// 店名
+  amount: number;        // 花費金額
+  items: string;         // 點了什麼餐點
+}
+
 interface AppContextValue {
   isDark: boolean;
   colors: ColorScheme;
@@ -26,6 +35,10 @@ interface AppContextValue {
   diary: DiaryEntry[];
   addDiaryEntry: (entry: Omit<DiaryEntry, 'id' | 'createdAt'>) => Promise<string>;
   deleteDiaryEntry: (id: string) => void;
+  updateDiaryEntry: (id: string, updatedData: Partial<Omit<DiaryEntry, 'id' | 'createdAt'>>) => Promise<void>;
+  expenses: ExpenseEntry[];
+  addExpense: (entry: Omit<ExpenseEntry, 'id' | 'createdAt'>) => Promise<void>;
+  deleteExpense: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -34,6 +47,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isDark, setIsDark]         = useState(false);
   const [favorites, setFavorites]   = useState<string[]>([]);
   const [diary, setDiary]           = useState<DiaryEntry[]>([]);
+  const [expenses, setExpenses]     = useState<ExpenseEntry[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -46,6 +60,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const d = await AsyncStorage.getItem('diary');
         if (d !== null) setDiary(JSON.parse(d));
+		
+		const ex = await AsyncStorage.getItem('expenses');
+        if (ex !== null) setExpenses(JSON.parse(ex));
       } catch (e) {
         console.warn('AppContext load error:', e);
       }
@@ -94,6 +111,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+  
+  const updateDiaryEntry = useCallback(
+    async (id: string, updatedData: Partial<Omit<DiaryEntry, 'id' | 'createdAt'>>): Promise<void> => {
+      setDiary(prev => {
+        // 使用 map 找到對應的 id 並更新內容，其餘保持不變
+        const next = prev.map(entry => 
+          entry.id === id ? { ...entry, ...updatedData } : entry
+        );
+        AsyncStorage.setItem('diary', JSON.stringify(next));
+        return next;
+      });
+    }, []);
+	
+  const addExpense = useCallback(
+    async (entry: Omit<ExpenseEntry, 'id' | 'createdAt'>): Promise<void> => {
+      const newEntry: ExpenseEntry = {
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        ...entry,
+      };
+      setExpenses(prev => {
+        const next = [newEntry, ...prev]; // 新的放最前面
+        AsyncStorage.setItem('expenses', JSON.stringify(next));
+        return next;
+      });
+    }, []);
+	
+  const deleteExpense = useCallback((id: string) => {
+    setExpenses(prev => {
+      const next = prev.filter(e => e.id !== id);
+      AsyncStorage.setItem('expenses', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const colors = isDark ? darkColors : lightColors;
 
@@ -102,6 +153,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isDark, colors, toggleTheme,
       favorites, toggleFavorite, isFavorite,
       diary, addDiaryEntry, deleteDiaryEntry,
+	  updateDiaryEntry, expenses, addExpense,
+	  deleteExpense,
     }}>
       {children}
     </AppContext.Provider>

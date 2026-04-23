@@ -25,6 +25,8 @@ export type DrawerParamList = {
   Favorites: undefined;
   Diary: undefined;
   Random: undefined;
+  FlipGame: undefined;
+  Expense: undefined;
 };
 
 // ─── 2. 引入各個 Screen (路徑需對應你的 src/screens 目錄) ────
@@ -35,6 +37,8 @@ import ImageOverviewScreen  from './src/screens/ImageOverviewScreen';
 import FavoritesScreen      from './src/screens/FavoritesScreen';
 import DiaryScreen          from './src/screens/DiaryScreen';
 import RandomPickerScreen   from './src/screens/RandomPickerScreen';
+import FlipGameScreen       from './src/screens/FlipGameScreen';
+import ExpenseScreen        from './src/screens/ExpenseScreen';
 
 // ─── 3. 建立具備型別檢查的導航器 ───────────────────────────
 const Drawer = createDrawerNavigator<DrawerParamList>();
@@ -86,6 +90,17 @@ export default function App() {
             component={RandomPickerScreen} 
             options={{ title: '隨機選店' }} 
           />
+		  <Drawer.Screen 
+            name="FlipGame"     
+            component={FlipGameScreen} 
+            options={{ title: '記憶大考驗' }} 
+          />
+		  
+		  <Drawer.Screen 
+			name="Expense"     
+			component={ExpenseScreen} 
+			options={{ title: '記帳本' }} 
+		  />
         </Drawer.Navigator>
       </NavigationContainer>
     </AppProvider>

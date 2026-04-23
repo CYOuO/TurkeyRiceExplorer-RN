@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
-  Animated, Easing,
+  Animated, Easing, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
@@ -67,7 +67,11 @@ export default function RandomPickerScreen({ navigation }: Props) {
         <Text style={{ color: colors.textLight, fontSize: 12 }}>（共 {restaurants.length} 間）</Text>
       </View>
 
-      <View style={styles.body}>
+      <ScrollView 
+        style={{ flex: 1 }} 
+        contentContainerStyle={styles.body} 
+        showsVerticalScrollIndicator={false}
+      >
         <Animated.Text style={[styles.dice, { transform: [{ rotate }] }]}>
           🎲
         </Animated.Text>
@@ -130,7 +134,7 @@ export default function RandomPickerScreen({ navigation }: Props) {
             </View>
           </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -144,7 +148,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
   statTxt:     { fontSize: 14 },
   statNum:     { fontSize: 18, fontWeight: 'bold' },
-  body:        { flex: 1, alignItems: 'center', padding: 24, paddingTop: 40, gap: 20 },
+  body:        { flexGrow: 1, alignItems: 'center', padding: 24, paddingTop: 40, gap: 20 },
   dice:        { fontSize: 80 },
   hint:        { fontSize: 15, textAlign: 'center' },
   spinBtn:     { paddingHorizontal: 40, paddingVertical: 16, borderRadius: 30,

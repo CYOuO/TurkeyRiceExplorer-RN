@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, Modal, Image, Alert, ScrollView,
@@ -11,6 +11,9 @@ import { DiaryEntry } from '../context/AppContext';
 import { restaurants } from '../data/restaurantData';
 import { ColorScheme } from '../theme/colors';
 
+// 引入檔案系統套件(讓圖片不要因為手機重開就消失)
+import RNFS from 'react-native-fs';
+
 // 嘗試 import ImagePicker（需要安裝 react-native-image-picker）
 let launchImageLibrary: ((options: any) => Promise<any>) | null = null;
 try {
@@ -19,14 +22,15 @@ try {
 
 type Props = DrawerScreenProps<DrawerParamList, 'Diary'>;
 
-// ─── 新增日記 Modal ────────────────────────────────────────
+// ─── 新增/編輯日記 Modal ────────────────────────────────────────
 function AddDiaryModal({
-  visible, onClose, onSave, colors,
+  visible, onClose, onSave, initialData, colors,
 }: {
   visible: boolean;
   onClose: () => void;
-  onSave: (entry: Omit<DiaryEntry, 'id' | 'createdAt'>) => Promise<string>;
+  onSave: (entry: Omit<DiaryEntry, 'id' | 'createdAt'>) => void;
   colors: ColorScheme;
+  initialData?: DiaryEntry | null;
 }) {
   const [restaurantId, setRestaurantId] = useState('');
   const [rating,       setRating]       = useState(5);
@@ -34,6 +38,17 @@ function AddDiaryModal({
   const [photoUri,     setPhotoUri]     = useState<string | null>(null);
   const [showList,     setShowList]     = useState(false);
   const [search,       setSearch]       = useState('');
+
+  useEffect(() => {
+    if (initialData) {
+      setRestaurantId(initialData.restaurantId);
+      setRating(initialData.rating);
+      setNote(initialData.note);
+      setPhotoUri(initialData.photoUri);
+    } else {
+      reset(); // 如果沒有 initialData，就是新增模式，清空表單
+    }
+  }, [initialData, visible]);
 
   const selectedRest = restaurants.find(r => r.id === restaurantId);
   const filteredRests = restaurants.filter(r =>
@@ -44,9 +59,27 @@ function AddDiaryModal({
       Alert.alert('提示', '需要安裝 react-native-image-picker\nnpm install react-native-image-picker');
       return;
     }
-    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8 });
-    if (!result.didCancel && result.assets?.[0]) {
-      setPhotoUri(result.assets[0].uri as string);
+    try {
+      const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8 });
+      
+      if (!result.didCancel && result.assets?.[0]) {
+        const tempUri = result.assets[0].uri as string;
+        
+        // 1. 取得檔名 (例如: image-123.jpg)
+        const fileName = tempUri.split('/').pop() || `photo_${Date.now()}.jpg`;
+        
+        // 2. 定義永久儲存路徑 (RNFS.DocumentDirectoryPath)
+        const permanentPath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+        
+        // 3. 將圖片從暫存區複製到永久儲存區
+        await RNFS.copyFile(tempUri, permanentPath);
+        
+        // 4. 將新的永久路徑存入 State (記得加上 file:// 協議，React Native 的 Image 才能正確讀取本地檔案)
+        setPhotoUri(`file://${permanentPath}`);
+      }
+    } catch (error) {
+      console.error('儲存圖片失敗:', error);
+      Alert.alert('錯誤', '無法儲存圖片到裝置中');
     }
   };
 
@@ -59,21 +92,22 @@ function AddDiaryModal({
     if (!restaurantId) { Alert.alert('提示', '請先選擇店家'); return; }
     onSave({
       restaurantId,
-      restaurantName: selectedRest!.name,
+      // 確保如果沒有重新選擇店家，也能抓到原本的店名
+      restaurantName: selectedRest ? selectedRest.name : initialData!.restaurantName,
       rating, note: note.trim(), photoUri,
     });
-    reset();
-    onClose();
   };
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={[m.root, { backgroundColor: colors.background }]}>
         <View style={[m.header, { backgroundColor: colors.header }]}>
-          <TouchableOpacity onPress={() => { reset(); onClose(); }} style={m.headerBtn}>
+          <TouchableOpacity onPress={onClose} style={m.headerBtn}>
             <Text style={{ color: colors.headerText, fontSize: 15 }}>取消</Text>
           </TouchableOpacity>
-          <Text style={[m.headerTitle, { color: colors.headerText }]}>📔 新增日記</Text>
+          <Text style={[m.headerTitle, { color: colors.headerText }]}>
+            {initialData ? '✏️ 編輯日記' : '📔 新增日記'}
+          </Text>
           <TouchableOpacity onPress={handleSave} style={m.headerBtn}>
             <Text style={{ color: colors.headerText, fontSize: 15, fontWeight: 'bold' }}>儲存</Text>
           </TouchableOpacity>
@@ -88,8 +122,8 @@ function AddDiaryModal({
               onPress={() => setShowList(true)}>
               <Text style={{ fontSize: 16 }}>🍗</Text>
               <Text style={[m.pickerTxt,
-                { color: selectedRest ? colors.text : colors.textLight }]}>
-                {selectedRest ? selectedRest.name : '請選擇店家...'}
+                { color: restaurantId ? colors.text : colors.textLight }]}>
+                {selectedRest ? selectedRest.name : (initialData?.restaurantName || '請選擇店家...')}
               </Text>
               <Text style={{ color: colors.primary }}>▾</Text>
             </TouchableOpacity>
@@ -182,8 +216,8 @@ function AddDiaryModal({
 
 // ─── 日記條目卡片 ──────────────────────────────────────────
 function DiaryCard({
-  entry, colors, onDelete,
-}: { entry: DiaryEntry; colors: ColorScheme; onDelete: () => void }) {
+  entry, colors, onDelete, onEdit
+}: { entry: DiaryEntry; colors: ColorScheme; onDelete: () => void; onEdit: () => void }) {
   const date    = new Date(entry.createdAt);
   const dateStr = `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()}`;
   return (
@@ -194,9 +228,14 @@ function DiaryCard({
       <View style={d.body}>
         <View style={d.topRow}>
           <Text style={[d.name, { color: colors.text }]}>{entry.restaurantName}</Text>
-          <TouchableOpacity onPress={onDelete}>
-            <Text style={{ color: colors.textLight, fontSize: 18 }}>🗑️</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity onPress={onEdit}>
+              <Text style={{ fontSize: 18 }}>✏️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onDelete}>
+              <Text style={{ color: colors.textLight, fontSize: 18 }}>🗑️</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={d.ratingRow}>
           {Array(5).fill(0).map((_, i) => (
@@ -214,14 +253,45 @@ function DiaryCard({
 
 // ─── 主畫面 ────────────────────────────────────────────────
 export default function DiaryScreen({ navigation }: Props) {
-  const { colors, diary, addDiaryEntry, deleteDiaryEntry } = useApp();
-  const [addVisible, setAddVisible] = useState(false);
+  const { colors, diary, addDiaryEntry, deleteDiaryEntry, updateDiaryEntry } = useApp();
+  
+  // ✅ 這裡宣告了 modalVisible 和 currentEntry 的狀態
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentEntry, setCurrentEntry] = useState<DiaryEntry | null>(null);
 
   const handleDelete = (id: string) =>
     Alert.alert('刪除日記', '確定要刪除這篇日記嗎？', [
       { text: '取消' },
       { text: '刪除', style: 'destructive', onPress: () => deleteDiaryEntry(id) },
     ]);
+  
+  // ✅ 點擊新增
+  const handleOpenAdd = () => {
+    setCurrentEntry(null);
+    setModalVisible(true);
+  };
+
+  // ✅ 點擊編輯
+  const handleOpenEdit = (entry: DiaryEntry) => {
+    setCurrentEntry(entry);
+    setModalVisible(true);
+  };
+
+  // ✅ 關閉 Modal 並清空狀態
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setTimeout(() => setCurrentEntry(null), 300); // 等動畫結束再清空，避免畫面閃爍
+  };
+
+  // ✅ 統一處理儲存邏輯 (區分新增與更新)
+  const handleSaveEntry = async (data: Omit<DiaryEntry, 'id' | 'createdAt'>) => {
+    if (currentEntry) {
+      await updateDiaryEntry(currentEntry.id, data);
+    } else {
+      await addDiaryEntry(data);
+    }
+    handleCloseModal();
+  };
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
@@ -232,7 +302,7 @@ export default function DiaryScreen({ navigation }: Props) {
         <Text style={[styles.title, { color: colors.headerText }]}>📔 雞肉飯日記</Text>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
-          onPress={() => setAddVisible(true)}>
+          onPress={handleOpenAdd}>
           <Text style={{ color: colors.headerText, fontSize: 22 }}>+</Text>
         </TouchableOpacity>
       </View>
@@ -246,7 +316,7 @@ export default function DiaryScreen({ navigation }: Props) {
           </Text>
           <TouchableOpacity
             style={[styles.addEntryBtn, { backgroundColor: colors.primary }]}
-            onPress={() => setAddVisible(true)}>
+            onPress={handleOpenAdd}>
             <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 15 }}>＋ 新增第一篇日記</Text>
           </TouchableOpacity>
         </View>
@@ -255,15 +325,22 @@ export default function DiaryScreen({ navigation }: Props) {
           data={diary} keyExtractor={e => e.id}
           contentContainerStyle={{ padding: 12, gap: 12 }}
           renderItem={({ item }) => (
-            <DiaryCard entry={item} colors={colors} onDelete={() => handleDelete(item.id)} />
+            <DiaryCard 
+              entry={item} 
+              colors={colors} 
+              onDelete={() => handleDelete(item.id)} 
+              onEdit={() => handleOpenEdit(item)} 
+            />
           )}
         />
       )}
 
+      {/* ✅ 這裡改用 modalVisible、handleCloseModal 等正確的函式 */}
       <AddDiaryModal
-        visible={addVisible}
-        onClose={() => setAddVisible(false)}
-        onSave={addDiaryEntry}
+        visible={modalVisible}
+        onClose={handleCloseModal}
+        onSave={handleSaveEntry}
+        initialData={currentEntry}
         colors={colors}
       />
     </SafeAreaView>
