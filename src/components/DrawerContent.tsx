@@ -1,3 +1,4 @@
+// 側邊選單
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
@@ -29,9 +30,9 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
 
   const navigateTo = (item: MenuItem) => {
     if (item.params) {
-      navigation.navigate(item.screen as never, item.params as never);
+      (navigation as any).navigate(item.screen as never, item.params as never);
     } else {
-      navigation.navigate(item.screen as never);
+      (navigation as any).navigate(item.screen as never);
     }
     navigation.closeDrawer();
   };
@@ -39,7 +40,7 @@ export default function DrawerContent(props: DrawerContentComponentProps) {
   return (
     <DrawerContentScrollView {...props} style={{ backgroundColor: colors.drawerBg }}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: '#B8860B' }]}>
+      <View style={[styles.header, { backgroundColor: '#825b37' }]}>
         <Text style={styles.emoji}>🦃</Text>
         <Text style={styles.title}>Turkey Rice</Text>
         <Text style={styles.sub}>嘉義火雞肉飯探索器</Text>
