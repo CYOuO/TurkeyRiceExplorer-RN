@@ -10,7 +10,14 @@ import { useApp } from '../context/AppContext';
 type Props = DrawerScreenProps<DrawerParamList, 'HomeStack'>;
 
 export default function HomeScreen({ navigation }: Props) {
-  const { colors } = useApp();
+  const { colors, triggerTransition } = useApp();
+  
+  const handleStart = () => {
+    triggerTransition(); // 觸發可樂動畫
+    setTimeout(() => {
+      navigation.navigate('HomeStack', { screen: 'RestaurantInfo' });
+    }, 500); // 給動畫一點上升時間後再換頁
+  };
 
   return (
     <View style={styles.container}>
@@ -47,7 +54,7 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.bottom}>
           <TouchableOpacity
             style={[styles.startBtn, { backgroundColor: colors.primary }]}
-            onPress={() => navigation.navigate('HomeStack', { screen: 'RestaurantInfo' } as never)}
+            onPress={handleStart}
             activeOpacity={0.85}
           >
             <Text style={styles.startBtnText}>🔍  開始探索</Text>

@@ -4,6 +4,7 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightColors, darkColors, ColorScheme } from '../theme/colors';
+import TransitionOverlay from '../components/TransitionOverlay';
 
 // ─── 型別定義 ──────────────────────────────────────────────
 export interface DiaryEntry {
@@ -39,6 +40,7 @@ interface AppContextValue {
   expenses: ExpenseEntry[];
   addExpense: (entry: Omit<ExpenseEntry, 'id' | 'createdAt'>) => Promise<void>;
   deleteExpense: (id: string) => void;
+  triggerTransition: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -48,6 +50,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites]   = useState<string[]>([]);
   const [diary, setDiary]           = useState<DiaryEntry[]>([]);
   const [expenses, setExpenses]     = useState<ExpenseEntry[]>([]);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -67,6 +70,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.warn('AppContext load error:', e);
       }
     })();
+  }, []);
+  
+  const triggerTransition = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => setIsTransitioning(false), 1800);
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -154,9 +162,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       favorites, toggleFavorite, isFavorite,
       diary, addDiaryEntry, deleteDiaryEntry,
 	  updateDiaryEntry, expenses, addExpense,
-	  deleteExpense,
+	  deleteExpense, triggerTransition,
     }}>
       {children}
+	  <TransitionOverlay visible={isTransitioning} />
     </AppContext.Provider>
   );
 }

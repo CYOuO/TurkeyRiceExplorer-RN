@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler'; // 必須置於最頂部
-import React from 'react';
+import React, { useState } from 'react';
+import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -8,6 +9,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 // 雖然這些是 .js 檔案，但 TypeScript 會自動處理 import
 import { AppProvider } from './src/context/AppContext';
 import DrawerContent from './src/components/DrawerContent';
+import TransitionOverlay from './src/components/TransitionOverlay';
 
 // ─── 1. 定義導航型別 (Navigation Param Lists) ──────────────
 /**
@@ -57,52 +59,39 @@ function HomeStack() {
 
 // ─── 5. 主程式入口 ─────────────────────────────────────────
 export default function App() {
+  // ✅ 管理轉場動畫狀態
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const triggerTransition = () => {
+    setIsTransitioning(true);
+    // 設定 1.8 秒後關閉遮罩（配合動畫上升、停留與下降的時間）
+    setTimeout(() => {
+      setIsTransitioning(false);
+    }, 1800); 
+  };
+
   return (
     <AppProvider>
-      <NavigationContainer>
-        <Drawer.Navigator
-          // 設定自定義側邊欄並帶入型別
-          drawerContent={(props: DrawerContentComponentProps) => <DrawerContent {...props} />}
-          screenOptions={{
-            headerShown: false,
-            drawerType: 'slide',
-            overlayColor: 'rgba(0,0,0,0.4)',
-            drawerStyle: { width: 280 },
-          }}
-        >
-          <Drawer.Screen 
-            name="HomeStack"  
-            component={HomeStack}          
-            options={{ title: '首頁' }} 
-          />
-          <Drawer.Screen 
-            name="Favorites"  
-            component={FavoritesScreen}    
-            options={{ title: '我的收藏' }} 
-          />
-          <Drawer.Screen 
-            name="Diary"      
-            component={DiaryScreen}        
-            options={{ title: '雞肉飯日記' }} 
-          />
-          <Drawer.Screen 
-            name="Random"     
-            component={RandomPickerScreen} 
-            options={{ title: '隨機選店' }} 
-          />
-		  <Drawer.Screen 
-            name="FlipGame"     
-            component={FlipGameScreen} 
-            options={{ title: '記憶大考驗' }} 
-          />
-		  
-		  <Drawer.Screen 
-			name="Expense"     
-			component={ExpenseScreen} 
-			options={{ title: '記帳本' }} 
-		  />
-        </Drawer.Navigator>
-      </NavigationContainer>
+      <View style={{ flex: 1 }}>
+        <NavigationContainer>
+          <Drawer.Navigator
+            drawerContent={(props: DrawerContentComponentProps) => <DrawerContent {...props} />}
+            screenOptions={{
+              headerShown: false,
+              drawerType: 'slide',
+              overlayColor: 'rgba(0,0,0,0.4)',
+              drawerStyle: { width: 280 },
+            }}
+          >
+            <Drawer.Screen name="HomeStack" component={HomeStack} options={{ title: '首頁' }} />
+            <Drawer.Screen name="Favorites" component={FavoritesScreen} options={{ title: '我的收藏' }} />
+            <Drawer.Screen name="Diary" component={DiaryScreen} options={{ title: '雞肉飯日記' }} />
+            <Drawer.Screen name="Random" component={RandomPickerScreen} options={{ title: '隨機選店' }} />
+            <Drawer.Screen name="FlipGame" component={FlipGameScreen} options={{ title: '記憶大考驗' }} />
+            <Drawer.Screen name="Expense" component={ExpenseScreen} options={{ title: '記帳本' }} />
+          </Drawer.Navigator>
+        </NavigationContainer>
+      </View>
     </AppProvider>
   );
 }
