@@ -61,14 +61,15 @@ export default function FavoritesScreen({ navigation }: Props) {
                         <Text style={{ fontSize: 30 }}>🍗</Text>
                       </View>
                   }
-                  <TouchableOpacity style={styles.unfavBtn} onPress={() => toggleFavorite(item.id)}>
-                    <Text style={{ fontSize: 16 }}>❤️</Text>
-                  </TouchableOpacity>
+                  
                 </View>
                 <View style={styles.info}>
                   <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
                     {item.name}
                   </Text>
+                  <TouchableOpacity style={styles.unfavBtn} onPress={() => toggleFavorite(item.id)}>
+                    <Text style={{ fontSize: 16 }}>❤️</Text>
+                  </TouchableOpacity>
                   <StarRating rating={item.rating} size={13} />
                   <Text style={[styles.addr, { color: colors.textSecondary }]}
                     numberOfLines={1}>{item.address}</Text>
@@ -108,7 +109,7 @@ const styles = StyleSheet.create({
   imgWrap:  { position: 'relative' },
   img:      { width: 110, height: 110 },
   unfavBtn: { position: 'absolute', top: 6, right: 6,
-    backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 12, padding: 4 },
+    backgroundColor: 'rgba(255, 255, 255, 0)', borderRadius: 24, padding: 4 },
   info:    { flex: 1, padding: 12, gap: 4 },
   name:    { fontSize: 16, fontWeight: 'bold' },
   addr:    { fontSize: 12, marginTop: 2 },
