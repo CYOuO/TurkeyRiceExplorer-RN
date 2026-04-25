@@ -1,3 +1,4 @@
+// 全局狀態管理，包含主題、收藏、日記和記帳功能
 import React, {
   createContext, useContext, useState,
   useEffect, useCallback, ReactNode,
@@ -19,7 +20,7 @@ export interface DiaryEntry {
 
 export interface ExpenseEntry {
   id: string;
-  createdAt: string;     // 記帳日期
+  createdAt: number;     // 記帳日期
   restaurantId: string;  // 關聯的店家 ID
   restaurantName: string;// 店名
   amount: number;        // 花費金額
@@ -41,6 +42,7 @@ interface AppContextValue {
   addExpense: (entry: Omit<ExpenseEntry, 'id' | 'createdAt'>) => Promise<void>;
   deleteExpense: (id: string) => void;
   triggerTransition: () => void;
+  updateExpense: (id: string, updatedData: Partial<Omit<ExpenseEntry, 'id' | 'createdAt'>>) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -132,13 +134,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     }, []);
 	
-  const addExpense = useCallback(
-    async (entry: Omit<ExpenseEntry, 'id' | 'createdAt'>): Promise<void> => {
-      const newEntry: ExpenseEntry = {
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        ...entry,
-      };
+  const addExpense = useCallback(async (data: Omit<ExpenseEntry, 'id' | 'createdAt'> & { createdAt?: number }) => {
+  const newEntry: ExpenseEntry = {
+    ...data,
+    id: Date.now().toString(),
+    createdAt: data.createdAt || Date.now(), // 如果有傳日期就用傳的，沒有才用現在
+  };
       setExpenses(prev => {
         const next = [newEntry, ...prev]; // 新的放最前面
         AsyncStorage.setItem('expenses', JSON.stringify(next));
@@ -153,7 +154,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
-
+  const updateExpense = useCallback(async (id: string, updatedData: Partial<ExpenseEntry>) => {
+  setExpenses(prev => {
+    const next = prev.map(entry => 
+      entry.id === id ? { ...entry, ...updatedData } : entry
+    );
+    AsyncStorage.setItem('expenses', JSON.stringify(next));
+    return next;
+  });
+}, []);
   const colors = isDark ? darkColors : lightColors;
 
   return (
@@ -162,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       favorites, toggleFavorite, isFavorite,
       diary, addDiaryEntry, deleteDiaryEntry,
 	  updateDiaryEntry, expenses, addExpense,
-	  deleteExpense, triggerTransition,
+	  deleteExpense, updateExpense, triggerTransition,
     }}>
       {children}
 	  <TransitionOverlay visible={isTransitioning} />
