@@ -1,5 +1,7 @@
+// 星星評分元件 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons'; // 引入真正的圖示庫
 import { useApp } from '../context/AppContext';
 
 interface Props {
@@ -17,16 +19,19 @@ export default function StarRating({ rating, size = 14, showNumber = true }: Pro
   return (
     <View style={styles.row}>
       {Array(full).fill(0).map((_, i) => (
-        <Text key={`f${i}`} style={{ fontSize: size, color: colors.starFilled, lineHeight: size + 6 }}>★</Text>
+        <Icon key={`f${i}`} name="star" size={size} color={colors.starFilled} />
       ))}
+      
       {half && (
-        <Text style={{ fontSize: size, color: colors.starFilled, lineHeight: size + 6 }}>⯨</Text>
+        <Icon name="star-half" size={size} color={colors.starFilled} />
       )}
+      
       {Array(empty).fill(0).map((_, i) => (
-        <Text key={`e${i}`} style={{ fontSize: size, color: colors.starEmpty, lineHeight: size + 6 }}>★</Text>
+        <Icon key={`e${i}`} name="star-outline" size={size} color={colors.starEmpty} />
       ))}
+      
       {showNumber && (
-        <Text style={{ fontSize: size - 1, color: colors.textSecondary, lineHeight: size + 6, marginLeft: 3 }}>
+        <Text style={{ fontSize: size - 1, color: colors.textSecondary, marginLeft: 4 }}>
           {rating.toFixed(1)}
         </Text>
       )}
@@ -35,5 +40,5 @@ export default function StarRating({ rating, size = 14, showNumber = true }: Pro
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 2 }, // gap 可以讓星星之間有漂亮的小間距
 });
