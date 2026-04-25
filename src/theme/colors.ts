@@ -35,15 +35,15 @@ export interface ColorScheme {
 }
 
 export const lightColors: ColorScheme = {
-  primary:       '#F5A623',
-  primaryDark:   '#D4881A',
+  primary:       '#805b2e',
+  primaryDark:   '#9d6311',
   primaryLight:  '#FDE9C0',
   secondary:     '#FFD166',
-  accent:        '#C75B00',
+  accent:        '#df8e03',
   background:    '#FFF8E7',
   surface:       '#FFFFFF',
   card:          '#FFFBF0',
-  header:        '#F5A623',
+  header:        '#895f41',
   headerText:    '#FFFFFF',
   text:          '#2C1810',
   textSecondary: '#7A5C3A',
@@ -64,38 +64,47 @@ export const lightColors: ColorScheme = {
   inputBg:       '#FFFFFF',
   shadow:        'rgba(180,100,0,0.15)',
   tagBg:         '#FDE9C0',
-  tagText:       '#C75B00',
+  tagText:       '#93765e',
 };
 
 export const darkColors: ColorScheme = {
-  primary:       '#F5A623',
-  primaryDark:   '#D4881A',
-  primaryLight:  '#4A2E00',
+  primary:       '#805b2e',
+  primaryDark:   '#a0733d',
+  primaryLight:  'rgba(212, 136, 26, 0.15)',
   secondary:     '#FFD166',
-  accent:        '#FFB347',
-  background:    '#1A0F00',
-  surface:       '#2A1800',
-  card:          '#331E00',
-  header:        '#2A1800',
-  headerText:    '#FFE0A0',
-  text:          '#FFE8C0',
-  textSecondary: '#C8965A',
-  textLight:     '#8A6040',
-  border:        '#4A3010',
-  divider:       '#3A2200',
-  overlay:       'rgba(0,0,0,0.72)',
-  starFilled:    '#FFB800',
-  starEmpty:     '#4A3010',
-  openBadge:     '#66BB6A',
-  openBadgeBg:   '#1B3A1C',
-  closedBadge:   '#EF5350',
-  closedBadgeBg: '#3A1010',
+  accent:        '#855411',
+  // 背景層：深焙黑咖啡 (Dark Espresso)
+  background:    '#2A1F18', // 帶有明確咖啡色相的極深底色
+  surface:       '#382A20', // 摩卡色 (用於卡片、區塊)
+  card:          '#423226', // 稍亮的摩卡色
+  header:        '#2A1F18',
+  headerText:    '#FDF5E6', // 拿鐵奶泡色 (高對比暖白)
+  
+  // 文字層：確保 WCAG 對比度，使用暖白與淺奶茶色
+  text:          '#F5EBE0', 
+  textSecondary: '#D4C4B7',
+  textLight:     '#A39182',
+  
+  // 框線與陰影
+  border:        '#5C4738',
+  divider:       '#453528',
+  overlay:       'rgba(20, 15, 10, 0.8)', // 偏黑棕色的遮罩
+  
+  // 狀態與標籤顏色 (配合咖啡底色，微調綠色與紅色的明度，避免暗沉)
+  starFilled:    '#FFD166',
+  starEmpty:     '#5C4738',
+  openBadge:     '#6EE7B7', 
+  openBadgeBg:   'rgba(110, 231, 183, 0.15)',
+  closedBadge:   '#FCA5A5',
+  closedBadgeBg: 'rgba(252, 165, 165, 0.15)',
   favActive:     '#EF5350',
-  favInactive:   '#555',
-  drawerBg:      '#221400',
-  drawerActive:  '#3A2200',
-  inputBg:       '#2A1800',
-  shadow:        'rgba(0,0,0,0.4)',
-  tagBg:         '#3A2200',
-  tagText:       '#FFB347',
+  favInactive:   '#5C4738',
+  
+  // 介面元件
+  drawerBg:      '#2A1F18',
+  drawerActive:  'rgba(212, 136, 26, 0.15)',
+  inputBg:       '#382A20',
+  shadow:        'rgba(0, 0, 0, 0.5)',
+  tagBg:         'rgba(212, 136, 26, 0.15)',
+  tagText:       '#FFD166',
 };
