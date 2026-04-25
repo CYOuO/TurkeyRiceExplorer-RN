@@ -96,7 +96,7 @@ export default function RandomPickerScreen({ navigation }: Props) {
           <View style={[styles.resultCard, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
             <View style={styles.resultHeader}>
               <Text style={{ fontSize: 28 }}>🎉</Text>
-              <Text style={[styles.resultTitle, { color: colors.accent }]}>今天就去這間！</Text>
+              <Text style={[styles.resultTitle, { color: colors.text }]}>今天就去這間！</Text>
             </View>
             {getImage(picked.images[0]) && (
               <Image source={getImage(picked.images[0])!} style={styles.resultImg} resizeMode="cover" />
@@ -148,17 +148,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
   statTxt:     { fontSize: 14 },
   statNum:     { fontSize: 18, fontWeight: 'bold' },
-  body:        { flexGrow: 1, alignItems: 'center', padding: 24, paddingTop: 40, gap: 20 },
+  body:        { flexGrow: 1, alignItems: 'center', padding: 24, paddingTop: 10, gap: 20 },
   dice:        { fontSize: 80 },
   hint:        { fontSize: 15, textAlign: 'center' },
   spinBtn:     { paddingHorizontal: 40, paddingVertical: 16, borderRadius: 30,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 },
-  spinBtnTxt:  { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
+  spinBtnTxt:  { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
   resultCard:  { width: '100%', borderRadius: 20, overflow: 'hidden',
     shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 8, elevation: 6 },
-  resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16, paddingBottom: 0 },
-  resultTitle:  { fontSize: 18, fontWeight: 'bold' },
+  resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 8 },
+  resultTitle:  { fontSize: 16, fontWeight: 'bold' },
   resultImg:    { width: '100%', height: 180 },
   resultName:   { fontSize: 20, fontWeight: 'bold' },
   openBadge:    { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10 },
@@ -166,6 +166,6 @@ const styles = StyleSheet.create({
   resultTime:   { fontSize: 13 },
   resultDesc:   { fontSize: 14, lineHeight: 20 },
   actionRow:    { flexDirection: 'row', gap: 10, marginTop: 4 },
-  actionBtn:    { borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  actionBtn:    { borderRadius: 12, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
   actionBtnTxt: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
 });
