@@ -96,16 +96,29 @@ export default function FlipGameScreen({ navigation }: Props) {
   const [time, setTime] = useState(0);
   const [bestTime, setBestTime] = useState<number | null>(null);
 
-  // ✅ Toast 陣列管理：允許多個訊息同時存在
   type ToastType = { id: string; msg: string };
   const [toasts, setToasts] = useState<ToastType[]>([]);
 
+  // 監聽離開畫面的事件 (blur)，重置所有狀態
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setCards([]);
+      setFlippedIndices([]);
+      setMatchedIds([]);
+      setIsPlaying(false);
+      setShowPreview(false);
+      setGameOver(false);
+      setTime(0);
+      setToasts([]);
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   const showToast = useCallback((msg: string) => {
     const id = Date.now().toString() + Math.random().toString();
-    // ✅ 將新通知塞在陣列最前面，這會自然將舊的通知往下推
     setToasts(prev => [{ id, msg }, ...prev]);
     
-    // 2.5 秒後自動移除該通知
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 2500);
@@ -130,10 +143,13 @@ export default function FlipGameScreen({ navigation }: Props) {
     }, 5000);
   };
 
+  // 計時器邏輯：每 100 毫秒觸發，並使用 toFixed 處理浮點數誤差
   useEffect(() => {
     let interval: any;
     if (isPlaying && !gameOver) {
-      interval = setInterval(() => setTime(t => t + 1), 1000);
+      interval = setInterval(() => {
+        setTime(t => Number((t + 0.1).toFixed(1)));
+      }, 100);
     }
     return () => clearInterval(interval);
   }, [isPlaying, gameOver]);
@@ -179,7 +195,6 @@ export default function FlipGameScreen({ navigation }: Props) {
         <Text style={[styles.title, { color: colors.headerText }]}>🃏 雞肉飯翻牌大考驗</Text>
       </View>
 
-      {/* ✅ 頂部 Toast 容器 */}
       <View style={styles.toastContainer}>
         {toasts.map(toast => (
           <ToastMessage key={toast.id} msg={toast.msg} colors={colors} />
@@ -187,9 +202,13 @@ export default function FlipGameScreen({ navigation }: Props) {
       </View>
 
       <View style={[styles.statBar, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
-        <Text style={[styles.statTxt, { color: colors.text }]}>⏱️ 耗時: <Text style={{fontWeight:'bold'}}>{time}s</Text></Text>
+        <Text style={[styles.statTxt, { color: colors.text }]}>
+          ⏱️ 耗時: <Text style={{fontWeight:'bold'}}>{time.toFixed(1)}s</Text>
+        </Text>
         {showPreview && <Text style={{ color: colors.primary, fontWeight: 'bold' }}>👀 記憶時間...</Text>}
-        <Text style={[styles.statTxt, { color: colors.textSecondary }]}>🏆 最佳: {bestTime ? `${bestTime}s` : '--'}</Text>
+        <Text style={[styles.statTxt, { color: colors.textSecondary }]}>
+          🏆 最佳: {bestTime ? `${bestTime.toFixed(1)}s` : '--'}
+        </Text>
       </View>
 
       <View style={styles.board}>
@@ -205,7 +224,7 @@ export default function FlipGameScreen({ navigation }: Props) {
         ) : gameOver ? (
           <View style={styles.gameOverContainer}>
             <Text style={{ fontSize: 50 }}>🎊</Text>
-            <Text style={[styles.gameOverTitle, { color: colors.accent }]}>過關！耗時 {time} 秒</Text>
+            <Text style={[styles.gameOverTitle, { color: colors.accent }]}>過關！耗時 {time.toFixed(1)} 秒</Text>
             <TouchableOpacity style={[styles.startBtn, { backgroundColor: colors.primary, marginBottom: 16 }]} onPress={startGame}>
               <Text style={styles.startBtnTxt}>再玩一次</Text>
             </TouchableOpacity>
@@ -218,7 +237,6 @@ export default function FlipGameScreen({ navigation }: Props) {
               renderItem={({ item }) => (
                 <TouchableOpacity 
                   style={[styles.resultCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                  // ✅ 修正了這裡的 params 傳遞方式
                   onPress={() => navigation.navigate('HomeStack', { screen: 'RestaurantInfo', params: { restaurantId: item.id } } as never)}>
                   {getImage(item.images[0]) && <Image source={getImage(item.images[0])!} style={styles.resultImg} />}
                   <View style={{ flex: 1, padding: 10 }}>
@@ -254,7 +272,6 @@ const styles = StyleSheet.create({
   iconBtn:   { padding: 8 },
   title:     { flex: 1, fontSize: 18, fontWeight: 'bold', marginLeft: 4 },
   
-  // ✅ 更新 Toast 容器樣式
   toastContainer: { position: 'absolute', top: 65, left: 0, right: 0, alignItems: 'center', zIndex: 100, gap: 8 },
   toast: { width: '80%', padding: 12, borderRadius: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 10 },
   toastTxt:  { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
