@@ -1,17 +1,33 @@
+// 過場動畫 - 跟隨日/夜間模式切換主題色
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, StyleSheet, Dimensions, Text, Easing } from 'react-native';
+import { useApp } from '../context/AppContext';
 
 const { width, height } = Dimensions.get('window');
 
-const COLA_COLORS = {
-  main: '#2B1100',
-  waveLight: '#6F4E37',
-  bubble: 'rgba(255, 220, 150, 0.45)',
-  foam: '#FDFDD0',
+
+const LIGHT_THEME = {
+  main:      '#FFF3D0',
+  wave:      '#F5A623',
+  bubble:    'rgba(245,166,35,0.3)',
+  foam:      '#FFF9E6',
+  text:      '#C75B00',
+  subText:   'rgba(180,80,0,0.7)',
+  iconBg:    '#FFE082',
 };
 
-// ─── 1. 氣泡組件 ───────────────────────────────────
-const Bubble = ({ delay, startX }: { delay: number; startX: number }) => {
+const DARK_THEME = {
+  main:      '#2B1100',
+  wave:      '#6F4E37',
+  bubble:    'rgba(255,220,150,0.45)',
+  foam:      '#FDFDD0',
+  text:      '#FFE0A0',
+  subText:   'rgba(255,200,120,0.6)',
+  iconBg:    '#3A2000',
+};
+
+// ─── 氣泡組件 ───
+const Bubble = ({ delay, startX, color }: { delay: number; startX: number; color: string }) => {
   const bubbleAnim = useRef(new Animated.Value(0)).current;
   const size = Math.random() * 10 + 6;
 
@@ -19,149 +35,118 @@ const Bubble = ({ delay, startX }: { delay: number; startX: number }) => {
     const anim = Animated.loop(
       Animated.timing(bubbleAnim, {
         toValue: -height,
-        duration: 1500 + Math.random() * 500, // 稍微放慢一點點，更有可樂感
+        duration: 1500 + Math.random() * 500,
         useNativeDriver: true,
         easing: Easing.linear,
       })
     );
     const timeout = setTimeout(() => anim.start(), delay);
-    return () => {
-      clearTimeout(timeout);
-      anim.stop();
-    };
+    return () => { clearTimeout(timeout); anim.stop(); };
   }, []);
 
   return (
     <Animated.View
       style={[
         styles.bubble,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          left: startX,
-          bottom: -20,
-          transform: [{ translateY: bubbleAnim }],
-        },
+        { width: size, height: size, borderRadius: size / 2, left: startX, bottom: -20,
+          transform: [{ translateY: bubbleAnim }], backgroundColor: color },
       ]}
     />
   );
 };
 
 export default function TransitionOverlay({ visible }: { visible: boolean }) {
+  const { isDark } = useApp();
+  const theme = isDark ? DARK_THEME : LIGHT_THEME;
+
   const [shouldRender, setShouldRender] = useState(visible);
   const liquidAnim = useRef(new Animated.Value(height)).current;
-  
-  // ─── 2. 翻轉狀態 ───────────────────────────────────
+
   const [iconIndex, setIconIndex] = useState(0);
-  const icons = ['🦃', '🥚', '🍚']; 
+  const icons = ['🦃', '🥚', '🍚'];
   const flipAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       setShouldRender(true);
-      setIconIndex(0); 
+      setIconIndex(0);
       flipAnim.setValue(0);
-      
-      // 水位上升
+
       Animated.timing(liquidAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-        easing: Easing.out(Easing.quad),
+        toValue: 0, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.quad),
       }).start();
 
-      // 🔄 翻轉定時器：調慢至 550ms，配合 1800ms 的總長，每張圖都能優雅亮相
       const flipInterval = setInterval(() => {
         Animated.timing(flipAnim, {
-          toValue: 0.5,
-          duration: 200, // 稍微增加翻轉過程的時間
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.quad),
+          toValue: 0.5, duration: 200, useNativeDriver: true, easing: Easing.inOut(Easing.quad),
         }).start(() => {
           setIconIndex(prev => (prev + 1) % icons.length);
-          
           Animated.timing(flipAnim, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.quad),
-          }).start(() => {
-            flipAnim.setValue(0); 
-          });
+            toValue: 1, duration: 200, useNativeDriver: true, easing: Easing.inOut(Easing.quad),
+          }).start(() => flipAnim.setValue(0));
         });
-      }, 550); 
+      }, 550);
 
       return () => clearInterval(flipInterval);
     } else {
       Animated.timing(liquidAnim, {
-        toValue: height,
-        duration: 500,
-        useNativeDriver: true,
-        easing: Easing.in(Easing.quad),
+        toValue: height, duration: 500, useNativeDriver: true, easing: Easing.in(Easing.quad),
       }).start(() => setShouldRender(false));
     }
   }, [visible]);
 
-  const rotateY = flipAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '180deg'],
-  });
+  const rotateY = flipAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
 
   if (!shouldRender) return null;
 
   return (
-    <Animated.View 
-      pointerEvents="none" 
-      style={[styles.full, { transform: [{ translateY: liquidAnim }] }]}
-    >
-      <View style={styles.colaLiquid}>
+    <Animated.View pointerEvents="none" style={[styles.full, { transform: [{ translateY: liquidAnim }] }]}>
+      <View style={[styles.liquid, { backgroundColor: theme.main }]}>
         {[...Array(8)].map((_, i) => (
-          <Bubble key={i} delay={i * 150} startX={(width / 8) * i + 10} />
+          <Bubble key={i} delay={i * 150} startX={(width / 8) * i + 10} color={theme.bubble} />
         ))}
-        
+
         <View style={styles.center}>
-          <Animated.Text style={[styles.emoji, { transform: [{ rotateY }] }]}>
-            {icons[iconIndex]}
-          </Animated.Text>
-          <Text style={styles.loadingTxt}>Delicious Loading</Text>
-          <Text style={styles.subTxt}>嘉義美食探索中...</Text>
+          {/* Icon背景光暈 */}
+          <View style={[styles.iconGlow, { backgroundColor: theme.iconBg }]}>
+            <Animated.Text style={[styles.emoji, { transform: [{ rotateY }] }]}>
+              {icons[iconIndex]}
+            </Animated.Text>
+          </View>
+          <Text style={[styles.loadingTxt, { color: theme.text }]}>Delicious Loading</Text>
+          <Text style={[styles.subTxt, { color: theme.subText }]}>嘉義美食探索中...</Text>
+
+          {/* 進度點點 */}
+          <View style={styles.dotRow}>
+            {[0,1,2].map(i => (
+              <View key={i} style={[styles.progressDot, { backgroundColor: theme.wave, opacity: 0.6 + i * 0.2 }]} />
+            ))}
+          </View>
         </View>
       </View>
-      
-      {/* 輕量海浪 */}
+
+      {/* 波浪裝飾 */}
       <View style={styles.waveContainer}>
-         <View style={[styles.waveItem, { transform: [{ rotate: '4deg' }], left: -20 }]} />
-         <View style={[styles.waveItem, { transform: [{ rotate: '-4deg' }], right: -20 }]} />
-         <View style={styles.foamLine} />
+        <View style={[styles.waveItem, { transform: [{ rotate: '4deg' }], left: -20, backgroundColor: theme.main }]} />
+        <View style={[styles.waveItem, { transform: [{ rotate: '-4deg' }], right: -20, backgroundColor: theme.main }]} />
+        <View style={[styles.foamLine, { backgroundColor: theme.foam }]} />
       </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  full: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, elevation: 20 },
-  colaLiquid: { flex: 1, backgroundColor: COLA_COLORS.main, justifyContent: 'center', alignItems: 'center' },
-  center: { alignItems: 'center' },
-  emoji: { fontSize: 110, marginBottom: 15 }, 
-  loadingTxt: { color: '#FFF', fontSize: 26, fontWeight: 'bold' },
-  subTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 16, marginTop: 5 },
-  bubble: { position: 'absolute', backgroundColor: COLA_COLORS.bubble },
-  waveContainer: { position: 'absolute', top: -30, width: width, height: 50 },
-  waveItem: {
-    position: 'absolute',
-    width: width * 0.7,
-    height: 80,
-    backgroundColor: COLA_COLORS.main,
-    borderRadius: 30,
-    top: 0,
-  },
-  foamLine: {
-    position: 'absolute',
-    top: 20,
-    width: width,
-    height: 4,
-    backgroundColor: COLA_COLORS.foam,
-    opacity: 0.4,
-  },
+  full:          { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, elevation: 20 },
+  liquid:        { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center:        { alignItems: 'center', gap: 12 },
+  iconGlow:      { width: 140, height: 140, borderRadius: 70, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  emoji:         { fontSize: 90 },
+  loadingTxt:    { fontSize: 24, fontWeight: 'bold' },
+  subTxt:        { fontSize: 15 },
+  dotRow:        { flexDirection: 'row', gap: 8, marginTop: 4 },
+  progressDot:   { width: 8, height: 8, borderRadius: 4 },
+  bubble:        { position: 'absolute' },
+  waveContainer: { position: 'absolute', top: -30, width, height: 50 },
+  waveItem:      { position: 'absolute', width: width * 0.7, height: 80, borderRadius: 30, top: 0 },
+  foamLine:      { position: 'absolute', top: 20, width, height: 4, opacity: 0.4 },
 });
