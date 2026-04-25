@@ -16,8 +16,7 @@ import { ColorScheme } from '../theme/colors';
 const { width } = Dimensions.get('window');
 type Props = StackScreenProps<HomeStackParamList, 'RestaurantInfo'>;
 
-// ─── 🎨 標籤顏色產生器 ────────────────────────────────────────
-// 這裡定義了多種好看的顏色，會根據標籤名稱自動分配！
+// ─── 🎨 標籤顏色產生器 ───
 const TAG_PALETTE = [
   '#E57373', '#F06292', '#BA68C8', '#7986CB', '#4DD0E1', 
   '#4DB6AC', '#81C784', '#F5A623', '#FF8A65', '#A1887F'
@@ -30,7 +29,7 @@ function getTagColor(tag: string) {
   return TAG_PALETTE[Math.abs(hash) % TAG_PALETTE.length];
 }
 
-// ─── 營業狀態 Badge ────────────────────────────────────────
+// ─── 營業狀態 Badge ───
 function OpenBadge({ time, colors }: { time: string; colors: ColorScheme }) {
   const open = isOpenNow(time);
   return (
@@ -48,7 +47,7 @@ const badge = StyleSheet.create({
   text: { fontSize: 11, fontWeight: 'bold' },
 });
 
-// ─── 餐廳卡片 ──────────────────────────────────────────────
+// ─── 餐廳卡片 ───
 function RestaurantCard({
   restaurant, onPress, colors,
 }: { restaurant: Restaurant; onPress: () => void; colors: ColorScheme }) {
@@ -73,14 +72,13 @@ function RestaurantCard({
           <Text style={[cs.price, { color: colors.accent }]}>{restaurant.price}</Text>
         </View>
         
-        {/* ✅ 卡片內的動態顏色標籤 */}
         <View style={cs.tagRow}>
           {restaurant.tags.slice(0, 2).map(t => {
             const tColor = getTagColor(t);
             return (
               <View key={t} style={[cs.tagChip, { 
-                backgroundColor: tColor + '15', // 15 是透明度，讓背景淡淡的
-                borderColor: tColor + '40',     // 邊框稍微深一點點
+                backgroundColor: tColor + '15',
+                borderColor: tColor + '40',
                 borderWidth: 1 
               }]}>
                 <Text style={[cs.tagChipTxt, { color: tColor }]}>{t}</Text>
@@ -151,6 +149,7 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [filterOpen, setFilterOpen]     = useState(false);
   const [filterDay, setFilterDay]       = useState<number | null>(null);
+  const [filterFavorite, setFilterFavorite] = useState(false); // ✅ 我的收藏篩選
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortByRating, setSortByRating] = useState(false);
   const [selected, setSelected]         = useState<Restaurant | null>(null);
@@ -158,13 +157,26 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
 
   const ALL_TAGS = useMemo(() => Array.from(new Set(restaurants.flatMap(r => r.tags))), []);
 
+  // ✅ 判斷是否有任何篩選正在進行 (包含搜尋、星等、收藏、營業狀態)
+  const isFilterActive = filterOpen || filterDay !== null || filterFavorite || selectedTags.length > 0 || sortByRating || appliedSearch.length > 0;
+
+  // ✅ 清除所有篩選條件與搜尋
+  const clearAllFilters = () => {
+    setFilterOpen(false);
+    setFilterDay(null);
+    setFilterFavorite(false);
+    setSelectedTags([]);
+    setSortByRating(false);
+    setAppliedSearch('');
+    setSearch('');
+    setSelected(null);
+  };
+
   useEffect(() => {
     const targetId = route.params?.restaurantId || (route.params as any)?.preselect;
     if (targetId) {
       const target = restaurants.find(r => r.id === targetId);
-      if (target) {
-        setSelected(target);
-      }
+      if (target) setSelected(target);
     }
   }, [route.params]);
 
@@ -173,6 +185,7 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
       if (appliedSearch && !r.name.includes(appliedSearch) && !r.address.includes(appliedSearch)) return false;
       if (filterOpen && !isOpenNow(r.time)) return false;
       if (filterDay !== null && !isOpenOnDay(r.time, filterDay)) return false;
+      if (filterFavorite && !isFavorite(r.id)) return false; // ✅ 套用收藏過濾
       if (selectedTags.length > 0) {
         const hasAllTags = selectedTags.every(tag => r.tags.includes(tag));
         if (!hasAllTags) return false;
@@ -185,7 +198,7 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
     }
 
     return result;
-  }, [appliedSearch, filterOpen, filterDay, selectedTags, sortByRating]);
+  }, [appliedSearch, filterOpen, filterDay, selectedTags, sortByRating, filterFavorite, isFavorite]);
 
   const handleSearch = () => { setAppliedSearch(search.trim()); setSelected(null); };
   const clearSearch  = () => { setSearch(''); setAppliedSearch(''); setSelected(null); };
@@ -237,7 +250,7 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
     ];
     return (
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <ImageGallery images={selected.images} colors={colors} onAllImages={() => navigation.navigate('ImageOverview', { restaurant: selected })} />
+        <ImageGallery images={selected.images} colors={colors} onAllImages={() => navigation.navigate('ImageOverview', { restaurant: selected }as any)} />
         <View style={[ds.pad, { backgroundColor: colors.background }]}>
           <View style={ds.header}>
             <View style={{ flex: 1 }}>
@@ -260,7 +273,6 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
             </View>
           ))}
           
-          {/* ✅ 店家詳情內的動態顏色標籤 */}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
             {selected.tags.map(t => {
               const tColor = getTagColor(t);
@@ -295,10 +307,14 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.appBar, { backgroundColor: colors.header }]}>
-        <TouchableOpacity onPress={() => navigation.openDrawer()} style={styles.iconBtn}><Text style={{ fontSize: 22, color: colors.headerText }}>☰</Text></TouchableOpacity>
-        <Text style={[styles.appBarTitle, { color: colors.headerText }]}>探索店家</Text>
-        {selected && (
-          <TouchableOpacity onPress={() => setSelected(null)} style={styles.iconBtn}><Text style={{ color: colors.headerText, fontSize: 13 }}>全部</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => (navigation as any).openDrawer()} style={styles.iconBtn}><Text style={{ fontSize: 22, color: colors.headerText }}>☰</Text></TouchableOpacity>
+        
+        {/* ✅ 不改變原本排版：直接在原本的 Text 上加上 onPress 恢復清單 */}
+        <Text style={[styles.appBarTitle, { color: colors.headerText }]} onPress={() => setSelected(null)}>探索店家</Text>
+        
+        {/* ✅ 右側清除按鈕：只有在有套用篩選時才出現 */}
+        {isFilterActive && (
+          <TouchableOpacity onPress={clearAllFilters} style={styles.iconBtn}><Text style={{ color: colors.headerText, fontSize: 13, fontWeight: 'bold' }}>全部</Text></TouchableOpacity>
         )}
       </View>
 
@@ -311,63 +327,59 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
         <TouchableOpacity style={[styles.searchBtn, { backgroundColor: colors.accent }]} onPress={handleSearch}><Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 13 }}>搜尋</Text></TouchableOpacity>
       </View>
 
-      {/* 第一層篩選列：時間 */}
+      {/* 第一層篩選列：只放週一 ~ 週日 */}
       <View style={[styles.filterRow, { backgroundColor: colors.surface }]}>
         <FlatList
           horizontal showsHorizontalScrollIndicator={false}
-          data={[{ key: 'open', label: '🟢 營業中' }, ...DAY_LABELS.map((l, i) => ({ key: `day${i}`, label: `週${l}`, dayIdx: i }))]}
+          data={DAY_LABELS.map((l, i) => ({ key: `day${i}`, label: `週${l}`, dayIdx: i }))}
           keyExtractor={item => item.key}
           contentContainerStyle={{ gap: 8, paddingHorizontal: 12, paddingVertical: 8 }}
           renderItem={({ item }) => {
-            const isOpenFilter = item.key === 'open';
-            const isActive = isOpenFilter ? filterOpen : filterDay === (item as any).dayIdx;
+            const isActive = filterDay === item.dayIdx;
             return (
               <TouchableOpacity
-                style={[styles.chip, { borderColor: colors.border }, isActive && { backgroundColor: isOpenFilter ? colors.primary : colors.secondary, borderColor: isOpenFilter ? colors.primary : colors.secondary }]}
+                style={[styles.chip, { borderColor: colors.border }, isActive && { backgroundColor: colors.secondary, borderColor: colors.secondary }]}
                 onPress={() => {
-                  if (isOpenFilter) setFilterOpen(v => !v);
-                  else {
-                    const d = (item as any).dayIdx as number;
-                    setFilterDay(filterDay === d ? null : d);
-                  }
+                  setFilterDay(filterDay === item.dayIdx ? null : item.dayIdx);
                   setSelected(null);
                 }}>
-                <Text style={[styles.chipTxt, { color: isActive ? (isOpenFilter ? '#FFF' : colors.accent) : colors.text }]}>{item.label}</Text>
+                <Text style={[styles.chipTxt, { color: isActive ? colors.accent : colors.text }]}>{item.label}</Text>
               </TouchableOpacity>
             );
           }}
         />
       </View>
 
-      {/* 第二層篩選列：高分排序與多重標籤 */}
+      {/* 第二層篩選列：營業中 -> 高分優先 -> 我的收藏 -> 標籤 */}
       <View style={{ backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 10, gap: 8 }}>
           
-          {/* ⭐ 高分優先按鈕 */}
           <TouchableOpacity
-            style={[styles.chip, { 
-              // 點選時實心邊框，未點選時帶點透明度的柔和邊框
-              borderColor: sortByRating ? colors.accent : colors.accent + '40', 
-              // 點選時實心背景，未點選時淡淡的背景 ('15' 代表 15% 透明度)
-              backgroundColor: sortByRating ? colors.accent : colors.accent + '15' 
-            }]}
+            style={[styles.chip, { borderColor: colors.border }, filterOpen && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+            onPress={() => { setFilterOpen(v => !v); setSelected(null); }}>
+            <Text style={[styles.chipTxt, { color: filterOpen ? '#FFF' : colors.text }]}>🟢 營業中</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.chip, { borderColor: sortByRating ? colors.accent : colors.accent + '40', backgroundColor: sortByRating ? colors.accent : colors.accent + '15' }]}
             onPress={() => { setSortByRating(v => !v); setSelected(null); }}>
-            <Text style={[styles.chipTxt, { color: sortByRating ? '#FFF' : colors.accent, fontWeight: 'bold' }]}>
-              ⭐ 高分優先
-            </Text>
+            <Text style={[styles.chipTxt, { color: sortByRating ? '#FFF' : colors.accent, fontWeight: 'bold' }]}>⭐ 高分優先</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.chip, { borderColor: colors.border }, filterFavorite && { backgroundColor: '#EF5350', borderColor: '#EF5350' }]}
+            onPress={() => { setFilterFavorite(v => !v); setSelected(null); }}>
+            <Text style={[styles.chipTxt, { color: filterFavorite ? '#FFF' : colors.text }]}>❤️ 我的收藏</Text>
           </TouchableOpacity>
           
-          {/* ✅ 動態標籤按鈕 */}
+          {/* ✅ 接著 map 出所有的標籤 */}
           {ALL_TAGS.map(tag => {
             const isActive = selectedTags.includes(tag);
             const tColor = getTagColor(tag);
             return (
               <TouchableOpacity
                 key={tag}
-                style={[styles.chip, { 
-                  borderColor: isActive ? tColor : tColor + '40', 
-                  backgroundColor: isActive ? tColor : tColor + '15' 
-                }]}
+                style={[styles.chip, { borderColor: isActive ? tColor : tColor + '40', backgroundColor: isActive ? tColor : tColor + '15' }]}
                 onPress={() => {
                   setSelectedTags(prev => isActive ? prev.filter(t => t !== tag) : [...prev, tag]);
                   setSelected(null);
@@ -417,7 +429,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 15, height: 42 },
   searchBtn:   { borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center', height: 42 },
   filterRow:   { }, 
-  chip:        { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
+  chip:        { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
   chipTxt:     { fontSize: 13, fontWeight: '500' },
   dropdown: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginVertical: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   dropdownTxt: { flex: 1, fontSize: 15 },
