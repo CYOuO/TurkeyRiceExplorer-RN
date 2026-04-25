@@ -9,6 +9,7 @@ import type { HomeStackParamList } from '../../App';
 import { useApp } from '../context/AppContext';
 import { getImage } from '../data/imageMap';
 import { ColorScheme } from '../theme/colors';
+import Icon from 'react-native-vector-icons/Ionicons'; 
 
 const { width, height } = Dimensions.get('window');
 type Props = StackScreenProps<HomeStackParamList, 'ImageOverview'>;
@@ -47,7 +48,7 @@ function FullScreenViewer({
         />
         <View style={fs.topBar}>
           <TouchableOpacity onPress={onClose} style={fs.closeBtn}>
-            <Text style={fs.closeTxt}>✕</Text>
+            <Icon name="close" size={28} color="#FFF" />
           </TouchableOpacity>
           <Text style={fs.title} numberOfLines={1}>{restaurantName}</Text>
           <Text style={fs.counter}>{current + 1} / {images.length}</Text>
@@ -63,7 +64,7 @@ function FullScreenViewer({
   );
 }
 
-// ─── 長按資訊 Sheet ────────────────────────────────────────
+// ─── 長按資訊 Sheet ───────────────────────────────────────────
 function ImageInfoSheet({
   visible, imageKey, index, total,
   restaurantName, address, time, colors, onClose,
@@ -115,7 +116,7 @@ function ImageInfoSheet({
 // ─── 主畫面 ────────────────────────────────────────────────
 export default function ImageOverviewScreen({ route, navigation }: Props) {
   const { colors } = useApp();
-  const { restaurant } = route.params;
+  const { restaurant } = route.params as any;
 
   const [columns, setColumns]     = useState<2 | 3>(3);
   const [fsIndex, setFsIndex]     = useState<number | null>(null);
@@ -128,25 +129,25 @@ export default function ImageOverviewScreen({ route, navigation }: Props) {
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
       {/* AppBar */}
       <View style={[styles.appBar, { backgroundColor: colors.header }]}>
+        {/* 順手把返回鍵也換成好看的原生箭頭 */}
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-          <Text style={{ fontSize: 22, color: colors.headerText }}>←</Text>
+          <Icon name="chevron-back" size={26} color={colors.headerText} />
         </TouchableOpacity>
+        
         <Text style={[styles.title, { color: colors.headerText }]} numberOfLines={1}>
           {restaurant.name}
         </Text>
-        <View style={styles.colToggle}>
-          {([2, 3] as const).map(n => (
-            <TouchableOpacity
-              key={n}
-              style={[styles.colBtn, columns === n && { backgroundColor: 'rgba(255,255,255,0.25)' }]}
-              onPress={() => setColumns(n)}>
-              <Text style={{ color: colors.headerText, fontSize: 13,
-                fontWeight: columns === n ? 'bold' : 'normal' }}>
-                {n === 2 ? '⊟' : '⊞'} {n}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        
+        {/* 🔥 單一按鈕動態切換：完全對齊 Flutter 的邏輯 */}
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => setColumns(columns === 2 ? 3 : 2)}>
+          <Icon 
+            name={columns === 2 ? 'grid' : 'apps'} 
+            size={22} 
+            color={colors.headerText} 
+          />
+        </TouchableOpacity>
       </View>
 
       {/* 餐廳資訊橫條 */}
@@ -154,15 +155,25 @@ export default function ImageOverviewScreen({ route, navigation }: Props) {
         {getImage(images[0]) && (
           <Image source={getImage(images[0])!} style={styles.infoThumb} />
         )}
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.infoAddr, { color: colors.text }]} numberOfLines={1}>
-            {restaurant.address}
-          </Text>
-          <Text style={[styles.infoTime, { color: colors.textSecondary }]} numberOfLines={1}>
-            {restaurant.time}
+        <View style={{ flex: 1, justifyContent: 'center', paddingRight: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <Text style={{ color: colors.starFilled, fontSize: 14, fontWeight: 'bold' }}>
+              ★ {restaurant.rating.toFixed(1)}
+            </Text>
+            {restaurant.tags && restaurant.tags.length > 0 && (
+              <View style={[styles.tagBadge, { backgroundColor: colors.tagBg }]}>
+                <Text style={[styles.tagTxt, { color: colors.tagText }]}>{restaurant.tags[0]}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.infoDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+            {restaurant.shortDesc || '探索在地的火雞肉飯美味'}
           </Text>
         </View>
-        <Text style={[styles.imgCount, { color: colors.primary }]}>{images.length} 張</Text>
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={[styles.imgCount, { color: colors.primary }]}>{images.length}</Text>
+          <Text style={{ fontSize: 10, color: colors.textLight, marginTop: 2 }}>張照片</Text>
+        </View>
       </View>
 
       {/* 圖片格子 */}
@@ -224,16 +235,17 @@ export default function ImageOverviewScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   root:       { flex: 1 },
   appBar:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, height: 52 },
-  iconBtn:    { padding: 8 },
-  title:      { flex: 1, fontSize: 16, fontWeight: 'bold', marginLeft: 4 },
-  colToggle:  { flexDirection: 'row', gap: 4 },
-  colBtn:     { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  iconBtn:    { padding: 8, justifyContent: 'center', alignItems: 'center' },
+  title:      { flex: 1, fontSize: 18, fontWeight: 'bold', marginLeft: 4 },
+  
   infoBar:    { flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  infoThumb:  { width: 44, height: 44, borderRadius: 8 },
-  infoAddr:   { fontSize: 13, fontWeight: '500' },
-  infoTime:   { fontSize: 12, marginTop: 2 },
-  imgCount:   { fontSize: 13, fontWeight: 'bold' },
+    paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  infoThumb:  { width: 48, height: 48, borderRadius: 10 },
+  tagBadge:   { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  tagTxt:     { fontSize: 10, fontWeight: '600' },
+  infoDesc:   { fontSize: 13, lineHeight: 18 },
+  imgCount:   { fontSize: 16, fontWeight: 'bold' },
+  
   indexBadge: { position: 'absolute', bottom: 4, right: 4,
     backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 8,
     paddingHorizontal: 5, paddingVertical: 2 },
@@ -249,7 +261,6 @@ const fs = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   closeBtn: { padding: 8 },
-  closeTxt: { color: '#FFF', fontSize: 20 },
   title:    { flex: 1, color: '#FFF', fontSize: 16, fontWeight: '600', marginLeft: 8 },
   counter:  { color: 'rgba(255,255,255,0.8)', fontSize: 14 },
   dots:     { position: 'absolute', bottom: 40, alignSelf: 'center', flexDirection: 'row', gap: 6 },
