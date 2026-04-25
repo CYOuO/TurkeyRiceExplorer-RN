@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Modal, Alert, ScrollView,
+  TextInput, Modal, Alert, ScrollView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { DrawerParamList } from '../../App';
 import { useApp } from '../context/AppContext';
@@ -13,25 +14,106 @@ import { ColorScheme } from '../theme/colors';
 
 type Props = DrawerScreenProps<DrawerParamList, 'Expense'>;
 
-// ─── 新增記帳 Modal ────────────────────────────────────────
+// ─── 視覺化圖表元件：花費統計與排行 ───
+function ExpenseStats({ expenses, colors }: { expenses: ExpenseEntry[]; colors: ColorScheme }) {
+  if (expenses.length === 0) return null;
+
+  const totalAmount = expenses.reduce((sum, current) => sum + current.amount, 0);
+
+  const topRestaurants = useMemo(() => {
+    const map: Record<string, number> = {};
+    expenses.forEach(e => {
+      map[e.restaurantName] = (map[e.restaurantName] || 0) + e.amount;
+    });
+    return Object.entries(map)
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 3);
+  }, [expenses]);
+
+  const maxTotal = topRestaurants.length > 0 ? topRestaurants[0].total : 1;
+
+  return (
+    <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[s.title, { color: colors.textSecondary }]}>累積總花費</Text>
+      <Text style={[s.total, { color: colors.primary }]}>
+        <Text style={{ fontSize: 24 }}>$</Text>{totalAmount.toLocaleString()}
+      </Text>
+      
+      <View style={[s.divider, { backgroundColor: colors.divider }]} />
+      <Text style={[s.subTitle, { color: colors.textLight }]}>🏆 花費排行榜</Text>
+      
+      {topRestaurants.map((rest, index) => (
+        <View key={rest.name} style={s.barRow}>
+          <Text style={[s.rank, { color: colors.textLight }]}>{index + 1}</Text>
+          <View style={{ flex: 1 }}>
+            <View style={s.barHeader}>
+              <Text style={[s.barName, { color: colors.text }]} numberOfLines={1}>{rest.name}</Text>
+              <Text style={[s.barNum, { color: colors.accent }]}>${rest.total}</Text>
+            </View>
+            <View style={[s.barBg, { backgroundColor: colors.border }]}>
+              <View style={[s.barFill, { 
+                backgroundColor: index === 0 ? colors.accent : colors.primary, 
+                width: `${(rest.total / maxTotal) * 100}%` 
+              }]} />
+            </View>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  card:     { margin: 16, padding: 20, borderRadius: 20, borderWidth: 1, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
+  title:    { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  total:    { fontSize: 40, fontWeight: 'bold', textAlign: 'center', marginTop: 4 },
+  divider:  { height: 1, marginVertical: 16 },
+  subTitle: { fontSize: 12, fontWeight: 'bold', marginBottom: 12 },
+  barRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  rank:     { fontSize: 16, fontWeight: 'bold', width: 14, textAlign: 'center' },
+  barHeader:{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  barName:  { fontSize: 13, flex: 1 },
+  barNum:   { fontSize: 13, fontWeight: 'bold' },
+  barBg:    { height: 8, borderRadius: 4, overflow: 'hidden' },
+  barFill:  { height: '100%', borderRadius: 4 },
+});
+
+// ─── 新增/編輯記帳 Modal ────────────────────────────────────────
 function AddExpenseModal({
-  visible, onClose, onSave, colors,
+  visible, onClose, onSave, colors, initialData
 }: {
   visible: boolean; onClose: () => void;
-  onSave: (entry: Omit<ExpenseEntry, 'id' | 'createdAt'>) => void;
+  onSave: (entry: Omit<ExpenseEntry, 'id' | 'createdAt'> & { createdAt: number }) => void;
   colors: ColorScheme;
+  initialData?: ExpenseEntry | null;
 }) {
   const [restaurantId, setRestaurantId] = useState('');
   const [amount, setAmount]             = useState('');
   const [items, setItems]               = useState('');
+  const [date, setDate]                 = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showList, setShowList]         = useState(false);
   const [search, setSearch]             = useState('');
+
+  useEffect(() => {
+    if (initialData) {
+      setRestaurantId(initialData.restaurantId);
+      setAmount(initialData.amount.toString());
+      setItems(initialData.items);
+      setDate(new Date(initialData.createdAt));
+    } else {
+      setRestaurantId(''); setAmount(''); setItems(''); setSearch('');
+      setDate(new Date());
+    }
+  }, [initialData, visible]);
 
   const selectedRest = restaurants.find(r => r.id === restaurantId);
   const filteredRests = restaurants.filter(r => r.name.includes(search) || r.address.includes(search));
 
-  const reset = () => {
-    setRestaurantId(''); setAmount(''); setItems(''); setSearch('');
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) setDate(selectedDate);
   };
 
   const handleSave = () => {
@@ -40,11 +122,11 @@ function AddExpenseModal({
     
     onSave({
       restaurantId,
-      restaurantName: selectedRest!.name,
+      restaurantName: selectedRest ? selectedRest.name : initialData!.restaurantName,
       amount: Number(amount),
       items: items.trim(),
+      createdAt: date.getTime(),
     });
-    reset();
     onClose();
   };
 
@@ -52,22 +134,50 @@ function AddExpenseModal({
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={[m.root, { backgroundColor: colors.background }]}>
         <View style={[m.header, { backgroundColor: colors.header }]}>
-          <TouchableOpacity onPress={() => { reset(); onClose(); }} style={m.headerBtn}>
+          <TouchableOpacity onPress={onClose} style={m.headerBtn}>
             <Text style={{ color: colors.headerText, fontSize: 15 }}>取消</Text>
           </TouchableOpacity>
-          <Text style={[m.headerTitle, { color: colors.headerText }]}>💰 新增記帳</Text>
+          <Text style={[m.headerTitle, { color: colors.headerText }]}>
+            {initialData ? '✏️ 編輯記帳' : '💰 新增記帳'}
+          </Text>
           <TouchableOpacity onPress={handleSave} style={m.headerBtn}>
             <Text style={{ color: colors.headerText, fontSize: 15, fontWeight: 'bold' }}>儲存</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }}>
+          
+          {/* 加入日期選擇 (維持一致的精美樣式) */}
+          <View>
+            <Text style={[m.label, { color: colors.textLight }]}>消費日期</Text>
+            <TouchableOpacity 
+              style={[m.picker, { backgroundColor: colors.card, borderColor: colors.border }]} 
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ fontSize: 16 }}>📅</Text>
+              <Text style={[m.pickerTxt, { color: colors.text }]}>
+                {`${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`}
+              </Text>
+              <Text style={{ color: colors.primary }}>修改</Text>
+            </TouchableOpacity>
+          </View>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              maximumDate={new Date()} 
+            />
+          )}
+
           <View>
             <Text style={[m.label, { color: colors.textLight }]}>店家</Text>
             <TouchableOpacity style={[m.picker, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => setShowList(true)}>
               <Text style={{ fontSize: 16 }}>🍗</Text>
-              <Text style={[m.pickerTxt, { color: selectedRest ? colors.text : colors.textLight }]}>
-                {selectedRest ? selectedRest.name : '請選擇店家...'}
+              <Text style={[m.pickerTxt, { color: restaurantId ? colors.text : colors.textLight }]}>
+                {selectedRest ? selectedRest.name : (initialData?.restaurantName || '請選擇店家...')}
               </Text>
               <Text style={{ color: colors.primary }}>▾</Text>
             </TouchableOpacity>
@@ -85,6 +195,7 @@ function AddExpenseModal({
             </View>
           </View>
 
+          {/* 恢復原本完整的建議文字與高度 */}
           <View>
             <Text style={[m.label, { color: colors.textLight }]}>點了什麼？ (選填)</Text>
             <TextInput
@@ -125,16 +236,41 @@ function AddExpenseModal({
 
 // ─── 主畫面 ────────────────────────────────────────────────
 export default function ExpenseScreen({ navigation }: Props) {
-  const { colors, expenses, addExpense, deleteExpense } = useApp();
+  const { colors, expenses, addExpense, deleteExpense, updateExpense } = useApp();
+  
   const [modalVisible, setModalVisible] = useState(false);
+  const [currentEntry, setCurrentEntry] = useState<ExpenseEntry | null>(null);
+  const [searchText, setSearchText]     = useState('');
 
-  const totalAmount = expenses.reduce((sum, current) => sum + current.amount, 0);
+  // 結合搜尋過濾與日期降冪排序
+  const filteredExpenses = useMemo(() => {
+    let result = expenses;
+    if (searchText.trim()) {
+      const q = searchText.trim().toLowerCase();
+      result = expenses.filter(e => 
+        e.restaurantName.toLowerCase().includes(q) || 
+        e.items.toLowerCase().includes(q)
+      );
+    }
+    return result.sort((a, b) => b.createdAt - a.createdAt);
+  }, [expenses, searchText]);
 
   const handleDelete = (id: string) =>
     Alert.alert('刪除紀錄', '確定要刪除這筆記帳嗎？', [
       { text: '取消' },
       { text: '刪除', style: 'destructive', onPress: () => deleteExpense(id) },
     ]);
+
+  const handleOpenAdd = () => { setCurrentEntry(null); setModalVisible(true); };
+  const handleOpenEdit = (entry: ExpenseEntry) => { setCurrentEntry(entry); setModalVisible(true); };
+  
+  const handleSave = async (data: Omit<ExpenseEntry, 'id' | 'createdAt'> & { createdAt: number }) => {
+    if (currentEntry) {
+      await updateExpense(currentEntry.id, data);
+    } else {
+      await addExpense(data);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
@@ -143,37 +279,57 @@ export default function ExpenseScreen({ navigation }: Props) {
           <Text style={{ fontSize: 22, color: colors.headerText }}>☰</Text>
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.headerText }]}>💰 雞肉飯記帳本</Text>
-        <TouchableOpacity style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={() => setModalVisible(true)}>
+        <TouchableOpacity style={[styles.addBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={handleOpenAdd}>
           <Text style={{ color: colors.headerText, fontSize: 22 }}>+</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.summaryCard, { backgroundColor: colors.primary }]}>
-        <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: '600' }}>累積總花費</Text>
-        <Text style={{ color: '#FFF', fontSize: 36, fontWeight: 'bold', marginTop: 4 }}>
-          <Text style={{ fontSize: 24 }}>$</Text> {totalAmount.toLocaleString()}
-        </Text>
-      </View>
+      {/* 恢復獨立在最上方的精美搜尋列 */}
+      {expenses.length > 0 && (
+        <View style={[styles.searchRow, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
+          <View style={[styles.searchBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+            <Text style={{ fontSize: 14 }}>🔍</Text>
+            <TextInput
+              value={searchText} onChangeText={setSearchText}
+              placeholder="搜尋店名或品項..." placeholderTextColor={colors.textLight}
+              style={[styles.searchInput, { color: colors.text }]}
+            />
+            {searchText.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchText('')}>
+                <Text style={{ color: colors.textLight }}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
 
       {expenses.length === 0 ? (
         <View style={styles.empty}>
           <Text style={{ fontSize: 64 }}>💸</Text>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>還沒有記帳紀錄</Text>
           <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>紀錄你每一筆吃雞肉飯的花費，看看你到底投資了多少在火雞肉飯上！</Text>
-          <TouchableOpacity style={[styles.addEntryBtn, { backgroundColor: colors.primary }]} onPress={() => setModalVisible(true)}>
+          <TouchableOpacity style={[styles.addEntryBtn, { backgroundColor: colors.primary }]} onPress={handleOpenAdd}>
             <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 15 }}>＋ 新增第一筆花費</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={expenses} keyExtractor={e => e.id}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
+          data={filteredExpenses} 
+          keyExtractor={e => e.id}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          ListHeaderComponent={!searchText ? <ExpenseStats expenses={expenses} colors={colors} /> : null}
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', marginTop: 40, gap: 8 }}>
+              <Text style={{ fontSize: 36 }}>🔍</Text>
+              <Text style={{ color: colors.textSecondary }}>找不到符合的記帳紀錄</Text>
+            </View>
+          }
           renderItem={({ item }) => {
             const date = new Date(item.createdAt);
             const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
             return (
-              <View style={[d.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={d.dateBox}>
+              <View style={[d.card, { backgroundColor: colors.card, borderColor: colors.border, marginHorizontal: 16 }]}>
+                <View style={[d.dateBox, { backgroundColor: colors.background }]}>
                   <Text style={[d.dateTxt, { color: colors.textSecondary }]}>{dateStr}</Text>
                 </View>
                 <View style={d.body}>
@@ -181,28 +337,35 @@ export default function ExpenseScreen({ navigation }: Props) {
                   {Boolean(item.items) && <Text style={[d.items, { color: colors.textLight }]} numberOfLines={1}>{item.items}</Text>}
                 </View>
                 <Text style={[d.amount, { color: colors.accent }]}>${item.amount}</Text>
-                <TouchableOpacity onPress={() => handleDelete(item.id)} style={{ padding: 8, marginLeft: 4 }}>
-                  <Text style={{ fontSize: 16, color: colors.textLight }}>✕</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', marginLeft: 12, gap: 10 }}>
+                  <TouchableOpacity onPress={() => handleOpenEdit(item)}>
+                    <Text style={{ fontSize: 16 }}>✏️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                    <Text style={{ fontSize: 16, color: colors.textLight }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           }}
         />
       )}
 
-      <AddExpenseModal visible={modalVisible} onClose={() => setModalVisible(false)} onSave={addExpense} colors={colors} />
+      <AddExpenseModal visible={modalVisible} onClose={() => setModalVisible(false)} onSave={handleSave} colors={colors} initialData={currentEntry} />
     </SafeAreaView>
   );
 }
 
-// ─── 樣式設定 ──────────────────────────────────────────
+// ─── 樣式設定 (完整還原版) ──────────────────────────────────────────
 const styles = StyleSheet.create({
   root:       { flex: 1 },
   appBar:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 52 },
   iconBtn:    { padding: 8 },
   title:      { flex: 1, fontSize: 18, fontWeight: 'bold', marginLeft: 4 },
   addBtn:     { padding: 8, borderRadius: 20 },
-  summaryCard:{ margin: 16, padding: 24, borderRadius: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 5 },
+  searchRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
+  searchBox:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, height: 40, borderRadius: 12, borderWidth: 1 },
+  searchInput:{ flex: 1, fontSize: 14 },
   empty:      { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold' },
   emptyHint:  { fontSize: 14, textAlign: 'center', lineHeight: 22 },
@@ -234,11 +397,11 @@ const l = StyleSheet.create({
 });
 
 const d = StyleSheet.create({
-  card:       { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 8 },
-  dateBox:    { width: 46, height: 46, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  card:       { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 10 },
+  dateBox:    { width: 46, height: 46, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   dateTxt:    { fontSize: 13, fontWeight: 'bold' },
   body:       { flex: 1 },
-  name:       { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
+  name:       { fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
   items:      { fontSize: 13 },
   amount:     { fontSize: 18, fontWeight: 'bold' },
 });
