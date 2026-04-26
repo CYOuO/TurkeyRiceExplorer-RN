@@ -1,10 +1,11 @@
-// 日記頁面：搜尋、年月篩選、店家篩選
+// 日記頁面：搜尋、年月篩選、店家篩選、日期與評分排序
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Modal, Image, Alert, ScrollView,
+  TextInput, Modal, Image, Alert, ScrollView, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { DrawerParamList } from '../../App';
 import { useApp } from '../context/AppContext';
@@ -26,7 +27,7 @@ function AddDiaryModal({
 }: {
   visible: boolean;
   onClose: () => void;
-  onSave: (entry: Omit<DiaryEntry, 'id' | 'createdAt'>) => void;
+  onSave: (entry: Omit<DiaryEntry, 'id' | 'createdAt'> & { createdAt: number }) => void;
   colors: ColorScheme;
   initialData?: DiaryEntry | null;
 }) {
@@ -34,6 +35,8 @@ function AddDiaryModal({
   const [rating,       setRating]       = useState(5);
   const [note,         setNote]         = useState('');
   const [photoUri,     setPhotoUri]     = useState<string | null>(null);
+  const [date,         setDate]         = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showList,     setShowList]     = useState(false);
   const [search,       setSearch]       = useState('');
 
@@ -43,8 +46,10 @@ function AddDiaryModal({
       setRating(initialData.rating);
       setNote(initialData.note);
       setPhotoUri(initialData.photoUri);
+      setDate(new Date(initialData.createdAt || Date.now()));
     } else {
       setRestaurantId(''); setRating(5); setNote(''); setPhotoUri(null); setSearch('');
+      setDate(new Date());
     }
   }, [initialData, visible]);
 
@@ -65,12 +70,20 @@ function AddDiaryModal({
     } catch { Alert.alert('錯誤', '無法儲存圖片'); }
   };
 
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) setDate(selectedDate);
+  };
+
   const handleSave = () => {
     if (!restaurantId) { Alert.alert('提示', '請先選擇店家'); return; }
     onSave({
       restaurantId,
       restaurantName: selectedRest ? selectedRest.name : initialData!.restaurantName,
-      rating, note: note.trim(), photoUri,
+      rating, 
+      note: note.trim(), 
+      photoUri,
+      createdAt: date.getTime(),
     });
   };
 
@@ -90,6 +103,31 @@ function AddDiaryModal({
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }}>
+          
+          <View>
+            <Text style={[m.label, { color: colors.textLight }]}>品嚐日期</Text>
+            <TouchableOpacity 
+              style={[m.picker, { backgroundColor: colors.card, borderColor: colors.border }]} 
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ fontSize: 16 }}>📅</Text>
+              <Text style={[m.pickerTxt, { color: colors.text }]}>
+                {`${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`}
+              </Text>
+              <Text style={{ color: colors.primary }}>修改</Text>
+            </TouchableOpacity>
+          </View>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              maximumDate={new Date()} 
+            />
+          )}
+
           <View>
             <Text style={[m.label, { color: colors.textLight }]}>店家</Text>
             <TouchableOpacity style={[m.picker, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => setShowList(true)}>
@@ -196,26 +234,27 @@ export default function DiaryScreen({ navigation }: Props) {
   const [modalVisible, setModalVisible]   = useState(false);
   const [currentEntry, setCurrentEntry]   = useState<DiaryEntry | null>(null);
   const [searchText,   setSearchText]     = useState('');
+  
+  // 篩選與排序狀態
   const [filterYear,   setFilterYear]     = useState<number | null>(null);
   const [filterMonth,  setFilterMonth]    = useState<number | null>(null);
   const [filterRestId, setFilterRestId]   = useState<string | null>(null);
   const [filterRating, setFilterRating]   = useState<number | null>(null);
+  const [sortOrder,    setSortOrder]      = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
   const [showFilters,  setShowFilters]    = useState(false);
 
-  // 年份清單
   const years = useMemo(() => {
     const ys = new Set(diary.map(e => new Date(e.createdAt).getFullYear()));
     return Array.from(ys).sort((a, b) => b - a);
   }, [diary]);
 
-  // 店家清單（只有出現在日記的）
   const diaryRestaurants = useMemo(() => {
     const ids = new Set(diary.map(e => e.restaurantId));
     return restaurants.filter(r => ids.has(r.id));
   }, [diary]);
 
   const filtered = useMemo(() => {
-    return diary.filter(e => {
+    let result = diary.filter(e => {
       const date = new Date(e.createdAt);
       if (filterYear  !== null && date.getFullYear() !== filterYear)  return false;
       if (filterMonth !== null && date.getMonth() + 1 !== filterMonth) return false;
@@ -227,13 +266,32 @@ export default function DiaryScreen({ navigation }: Props) {
       }
       return true;
     });
-  }, [diary, filterYear, filterMonth, filterRestId, filterRating, searchText]);
+
+    result.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+
+      if (sortOrder === 'newest') return timeB - timeA;
+      if (sortOrder === 'oldest') return timeA - timeB;
+      if (sortOrder === 'highest') {
+        if (b.rating !== a.rating) return b.rating - a.rating; 
+        return timeB - timeA; 
+      }
+      if (sortOrder === 'lowest') {
+        if (a.rating !== b.rating) return a.rating - b.rating; 
+        return timeB - timeA; 
+      }
+      return 0;
+    });
+
+    return result;
+  }, [diary, filterYear, filterMonth, filterRestId, filterRating, searchText, sortOrder]);
 
   const hasFilter = filterYear !== null || filterMonth !== null || filterRestId !== null || filterRating !== null || searchText.trim().length > 0;
 
   const clearFilters = () => {
     setFilterYear(null); setFilterMonth(null); setFilterRestId(null);
-    setFilterRating(null); setSearchText('');
+    setFilterRating(null); setSearchText(''); setSortOrder('newest');
   };
 
   const handleDelete  = (id: string) => Alert.alert('刪除日記', '確定要刪除？', [{ text: '取消' }, { text: '刪除', style: 'destructive', onPress: () => deleteDiaryEntry(id) }]);
@@ -241,9 +299,12 @@ export default function DiaryScreen({ navigation }: Props) {
   const handleOpenEdit = (entry: DiaryEntry) => { setCurrentEntry(entry); setModalVisible(true); };
   const handleClose   = () => { setModalVisible(false); setTimeout(() => setCurrentEntry(null), 300); };
 
-  const handleSave = async (data: Omit<DiaryEntry, 'id' | 'createdAt'>) => {
-    if (currentEntry) await updateDiaryEntry(currentEntry.id, data);
-    else await addDiaryEntry(data);
+  const handleSave = async (data: Omit<DiaryEntry, 'id' | 'createdAt'> & { createdAt: number }) => {
+    if (currentEntry) {
+      await updateDiaryEntry(currentEntry.id, data as any);
+    } else {
+      await addDiaryEntry(data as any);
+    }
     handleClose();
   };
 
@@ -259,7 +320,6 @@ export default function DiaryScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* 搜尋列 */}
       {diary.length > 0 && (
         <View style={[styles.searchRow, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
           <View style={[styles.searchBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
@@ -279,10 +339,30 @@ export default function DiaryScreen({ navigation }: Props) {
         </View>
       )}
 
-      {/* 篩選面板 */}
       {showFilters && diary.length > 0 && (
         <View style={[styles.filterPanel, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
-          {/* 年份 */}
+          
+          <Text style={[styles.panelSubtitle, { color: colors.textLight }]}>排列順序</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+              <TouchableOpacity style={[styles.chip, sortOrder === 'newest' ? { backgroundColor: colors.secondary, borderColor: colors.secondary } : { borderColor: colors.border }]} onPress={() => setSortOrder('newest')}>
+                <Text style={{ color: sortOrder === 'newest' ? colors.accent : colors.text, fontSize: 12, fontWeight: 'bold' }}>⬇️ 最新日期</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.chip, sortOrder === 'oldest' ? { backgroundColor: colors.secondary, borderColor: colors.secondary } : { borderColor: colors.border }]} onPress={() => setSortOrder('oldest')}>
+                <Text style={{ color: sortOrder === 'oldest' ? colors.accent : colors.text, fontSize: 12, fontWeight: 'bold' }}>⬆️ 最舊日期</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.chip, sortOrder === 'highest' ? { backgroundColor: colors.secondary, borderColor: colors.secondary } : { borderColor: colors.border }]} onPress={() => setSortOrder('highest')}>
+                <Text style={{ color: sortOrder === 'highest' ? colors.accent : colors.text, fontSize: 12, fontWeight: 'bold' }}>⭐ 評分高</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.chip, sortOrder === 'lowest' ? { backgroundColor: colors.secondary, borderColor: colors.secondary } : { borderColor: colors.border }]} onPress={() => setSortOrder('lowest')}>
+                <Text style={{ color: sortOrder === 'lowest' ? colors.accent : colors.text, fontSize: 12, fontWeight: 'bold' }}>📉 評分低</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+
+          <View style={[styles.dividerLine, { backgroundColor: colors.divider }]} />
+          <Text style={[styles.panelSubtitle, { color: colors.textLight }]}>篩選條件</Text>
+
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
             <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
               {hasFilter && (
@@ -300,33 +380,18 @@ export default function DiaryScreen({ navigation }: Props) {
             </View>
           </ScrollView>
 
-          {/* 月份 */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
             <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
               {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
                 <TouchableOpacity key={m}
-                  style={[styles.chip, filterMonth === m ? { backgroundColor: colors.secondary, borderColor: colors.secondary } : { borderColor: colors.border }]}
+                  style={[styles.chip, filterMonth === m ? { backgroundColor: colors.primary, borderColor: colors.primary } : { borderColor: colors.border }]}
                   onPress={() => setFilterMonth(filterMonth === m ? null : m)}>
-                  <Text style={{ color: filterMonth === m ? colors.accent : colors.text, fontSize: 12 }}>{m}月</Text>
+                  <Text style={{ color: filterMonth === m ? '#FFF' : colors.text, fontSize: 12 }}>{m}月</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
 
-          {/* 評分篩選 */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
-            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
-              {[5,4,3,2,1].map(r => (
-                <TouchableOpacity key={r}
-                  style={[styles.chip, filterRating === r ? { backgroundColor: colors.starFilled, borderColor: colors.starFilled } : { borderColor: colors.border }]}
-                  onPress={() => setFilterRating(filterRating === r ? null : r)}>
-                  <Text style={{ color: filterRating === r ? '#FFF' : colors.text, fontSize: 12 }}>{'★'.repeat(r)}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-
-          {/* 店家篩選 */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
               {diaryRestaurants.map(r => (
@@ -384,7 +449,9 @@ const styles = StyleSheet.create({
   searchBox:   { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, height: 40, borderRadius: 12, borderWidth: 1 },
   searchInput: { flex: 1, fontSize: 14 },
   filterBtn:   { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  filterPanel: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1 },
+  filterPanel: { paddingHorizontal: 12, paddingVertical: 14, borderBottomWidth: 1 },
+  panelSubtitle: { fontSize: 12, fontWeight: 'bold', marginBottom: 8, marginLeft: 2 },
+  dividerLine: { height: 1, marginVertical: 10, opacity: 0.5 },
   chip:        { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
   empty:       { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
   emptyTitle:  { fontSize: 20, fontWeight: 'bold' },
