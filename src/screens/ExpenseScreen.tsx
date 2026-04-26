@@ -14,8 +14,8 @@ import { ColorScheme } from '../theme/colors';
 
 type Props = DrawerScreenProps<DrawerParamList, 'Expense'>;
 
-// ─── 視覺化圖表元件：花費統計與排行 ───
-function ExpenseStats({ expenses, colors }: { expenses: ExpenseEntry[]; colors: ColorScheme }) {
+// ─── 視覺化圖表元件：花費統計與排行 ──────────────────────────
+function ExpenseStats({ expenses, colors, isFiltered, filteredName }: { expenses: ExpenseEntry[]; colors: ColorScheme; isFiltered: boolean; filteredName?: string }) {
   if (expenses.length === 0) return null;
 
   const totalAmount = expenses.reduce((sum, current) => sum + current.amount, 0);
@@ -35,31 +35,37 @@ function ExpenseStats({ expenses, colors }: { expenses: ExpenseEntry[]; colors: 
 
   return (
     <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Text style={[s.title, { color: colors.textSecondary }]}>累積總花費</Text>
-      <Text style={[s.total, { color: colors.primary }]}>
+      <Text style={[s.title, { color: colors.textSecondary }]}>
+        {isFiltered ? `💰 ${filteredName || '篩選結果'} 總花費` : '累積總花費'}
+      </Text>
+      <Text style={[s.total, { color: colors.accent }]}>
         <Text style={{ fontSize: 24 }}>$</Text>{totalAmount.toLocaleString()}
       </Text>
       
-      <View style={[s.divider, { backgroundColor: colors.divider }]} />
-      <Text style={[s.subTitle, { color: colors.textLight }]}>🏆 花費排行榜</Text>
-      
-      {topRestaurants.map((rest, index) => (
-        <View key={rest.name} style={s.barRow}>
-          <Text style={[s.rank, { color: colors.textLight }]}>{index + 1}</Text>
-          <View style={{ flex: 1 }}>
-            <View style={s.barHeader}>
-              <Text style={[s.barName, { color: colors.text }]} numberOfLines={1}>{rest.name}</Text>
-              <Text style={[s.barNum, { color: colors.accent }]}>${rest.total}</Text>
+      {!isFiltered && (
+        <>
+          <View style={[s.divider, { backgroundColor: colors.divider }]} />
+          <Text style={[s.subTitle, { color: colors.textLight }]}>🏆 花費排行榜</Text>
+          
+          {topRestaurants.map((rest, index) => (
+            <View key={rest.name} style={s.barRow}>
+              <Text style={[s.rank, { color: colors.textLight }]}>{index + 1}</Text>
+              <View style={{ flex: 1 }}>
+                <View style={s.barHeader}>
+                  <Text style={[s.barName, { color: colors.text }]} numberOfLines={1}>{rest.name}</Text>
+                  <Text style={[s.barNum, { color: colors.accent }]}>${rest.total}</Text>
+                </View>
+                <View style={[s.barBg, { backgroundColor: colors.border }]}>
+                  <View style={[s.barFill, { 
+                    backgroundColor: index === 0 ? colors.accent : colors.primary, 
+                    width: `${(rest.total / maxTotal) * 100}%` 
+                  }]} />
+                </View>
+              </View>
             </View>
-            <View style={[s.barBg, { backgroundColor: colors.border }]}>
-              <View style={[s.barFill, { 
-                backgroundColor: index === 0 ? colors.accent : colors.primary, 
-                width: `${(rest.total / maxTotal) * 100}%` 
-              }]} />
-            </View>
-          </View>
-        </View>
-      ))}
+          ))}
+        </>
+      )}
     </View>
   );
 }
@@ -146,31 +152,16 @@ function AddExpenseModal({
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }}>
-          
-          {/* 加入日期選擇 (維持一致的精美樣式) */}
           <View>
             <Text style={[m.label, { color: colors.textLight }]}>消費日期</Text>
-            <TouchableOpacity 
-              style={[m.picker, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => setShowDatePicker(true)}
-            >
+            <TouchableOpacity style={[m.picker, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => setShowDatePicker(true)}>
               <Text style={{ fontSize: 16 }}>📅</Text>
-              <Text style={[m.pickerTxt, { color: colors.text }]}>
-                {`${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`}
-              </Text>
+              <Text style={[m.pickerTxt, { color: colors.text }]}>{`${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`}</Text>
               <Text style={{ color: colors.primary }}>修改</Text>
             </TouchableOpacity>
           </View>
 
-          {showDatePicker && (
-            <DateTimePicker
-              value={date}
-              mode="date"
-              display="default"
-              onChange={handleDateChange}
-              maximumDate={new Date()} 
-            />
-          )}
+          {showDatePicker && <DateTimePicker value={date} mode="date" display="default" onChange={handleDateChange} maximumDate={new Date()} />}
 
           <View>
             <Text style={[m.label, { color: colors.textLight }]}>店家</Text>
@@ -187,23 +178,13 @@ function AddExpenseModal({
             <Text style={[m.label, { color: colors.textLight }]}>花費金額 (元)</Text>
             <View style={[m.inputWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={{ fontSize: 18, color: colors.textSecondary }}>$</Text>
-              <TextInput
-                value={amount} onChangeText={setAmount}
-                keyboardType="numeric" placeholder="0" placeholderTextColor={colors.textLight}
-                style={[m.input, { color: colors.accent, fontSize: 20, fontWeight: 'bold' }]}
-              />
+              <TextInput value={amount} onChangeText={setAmount} keyboardType="numeric" placeholder="0" placeholderTextColor={colors.textLight} style={[m.input, { color: colors.accent, fontSize: 20, fontWeight: 'bold' }]} />
             </View>
           </View>
 
-          {/* 恢復原本完整的建議文字與高度 */}
           <View>
             <Text style={[m.label, { color: colors.textLight }]}>點了什麼？ (選填)</Text>
-            <TextInput
-              value={items} onChangeText={setItems}
-              placeholder="例如：火雞肉飯便當、紫菜湯..." placeholderTextColor={colors.textLight}
-              style={[m.textarea, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
-              multiline numberOfLines={3} textAlignVertical="top"
-            />
+            <TextInput value={items} onChangeText={setItems} placeholder="例如：火雞肉飯便當、紫菜湯..." placeholderTextColor={colors.textLight} style={[m.textarea, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]} multiline numberOfLines={3} textAlignVertical="top" />
           </View>
         </ScrollView>
 
@@ -242,34 +223,63 @@ export default function ExpenseScreen({ navigation }: Props) {
   const [currentEntry, setCurrentEntry] = useState<ExpenseEntry | null>(null);
   const [searchText, setSearchText]     = useState('');
 
-  // 結合搜尋過濾與日期降冪排序
-  const filteredExpenses = useMemo(() => {
-    let result = expenses;
-    if (searchText.trim()) {
-      const q = searchText.trim().toLowerCase();
-      result = expenses.filter(e => 
-        e.restaurantName.toLowerCase().includes(q) || 
-        e.items.toLowerCase().includes(q)
-      );
-    }
-    return result.sort((a, b) => b.createdAt - a.createdAt);
-  }, [expenses, searchText]);
+  // 篩選與排序狀態
+  const [filterYear, setFilterYear]     = useState<number | null>(null);
+  const [filterMonth, setFilterMonth]   = useState<number | null>(null);
+  const [filterRestId, setFilterRestId] = useState<string | null>(null);
+  const [sortOrder, setSortOrder]       = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
+  const [showFilters, setShowFilters]   = useState(false);
 
-  const handleDelete = (id: string) =>
-    Alert.alert('刪除紀錄', '確定要刪除這筆記帳嗎？', [
-      { text: '取消' },
-      { text: '刪除', style: 'destructive', onPress: () => deleteExpense(id) },
-    ]);
+  const years = useMemo(() => {
+    const ys = new Set(expenses.map(e => new Date(e.createdAt).getFullYear()));
+    return Array.from(ys).sort((a, b) => b - a);
+  }, [expenses]);
+
+  const expenseRestaurants = useMemo(() => {
+    const ids = new Set(expenses.map(e => e.restaurantId));
+    return restaurants.filter(r => ids.has(r.id));
+  }, [expenses]);
+
+  const filteredExpenses = useMemo(() => {
+    let result = expenses.filter(e => {
+      const date = new Date(e.createdAt);
+      if (filterYear !== null && date.getFullYear() !== filterYear) return false;
+      if (filterMonth !== null && date.getMonth() + 1 !== filterMonth) return false;
+      if (filterRestId && e.restaurantId !== filterRestId) return false;
+      if (searchText.trim()) {
+        const q = searchText.trim().toLowerCase();
+        if (!e.restaurantName.toLowerCase().includes(q) && !e.items.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+
+    result.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      if (sortOrder === 'newest') return timeB - timeA;
+      if (sortOrder === 'oldest') return timeA - timeB;
+      if (sortOrder === 'highest') return b.amount - a.amount;
+      if (sortOrder === 'lowest') return a.amount - b.amount;
+      return 0;
+    });
+
+    return result;
+  }, [expenses, filterYear, filterMonth, filterRestId, searchText, sortOrder]);
+
+  const hasFilter = filterYear !== null || filterMonth !== null || filterRestId !== null || searchText.trim().length > 0;
+  const filteredRestName = filterRestId ? restaurants.find(r => r.id === filterRestId)?.name : undefined;
+
+  const clearFilters = () => {
+    setFilterYear(null); setFilterMonth(null); setFilterRestId(null);
+    setSearchText(''); setSortOrder('newest');
+  };
 
   const handleOpenAdd = () => { setCurrentEntry(null); setModalVisible(true); };
   const handleOpenEdit = (entry: ExpenseEntry) => { setCurrentEntry(entry); setModalVisible(true); };
   
   const handleSave = async (data: Omit<ExpenseEntry, 'id' | 'createdAt'> & { createdAt: number }) => {
-    if (currentEntry) {
-      await updateExpense(currentEntry.id, data);
-    } else {
-      await addExpense(data);
-    }
+    if (currentEntry) await updateExpense(currentEntry.id, data as any);
+    else await addExpense(data as any);
   };
 
   return (
@@ -284,22 +294,74 @@ export default function ExpenseScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* 恢復獨立在最上方的精美搜尋列 */}
       {expenses.length > 0 && (
         <View style={[styles.searchRow, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
           <View style={[styles.searchBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
             <Text style={{ fontSize: 14 }}>🔍</Text>
-            <TextInput
-              value={searchText} onChangeText={setSearchText}
-              placeholder="搜尋店名或品項..." placeholderTextColor={colors.textLight}
-              style={[styles.searchInput, { color: colors.text }]}
-            />
-            {searchText.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchText('')}>
-                <Text style={{ color: colors.textLight }}>✕</Text>
-              </TouchableOpacity>
-            )}
+            <TextInput value={searchText} onChangeText={setSearchText} placeholder="搜尋店名或品項..." placeholderTextColor={colors.textLight} style={[styles.searchInput, { color: colors.text }]} />
+            {searchText.length > 0 && <TouchableOpacity onPress={() => setSearchText('')}><Text style={{ color: colors.textLight }}>✕</Text></TouchableOpacity>}
           </View>
+          <TouchableOpacity style={[styles.filterBtn, { backgroundColor: showFilters ? colors.primary : colors.primaryLight }]} onPress={() => setShowFilters(!showFilters)}>
+            <Text style={{ fontSize: 16 }}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ✅ 篩選面板：完全對齊 DiaryScreen 的樣式 */}
+      {showFilters && expenses.length > 0 && (
+        <View style={[styles.filterPanel, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
+          
+          <Text style={[styles.panelSubtitle, { color: colors.textLight }]}>排列順序</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+              <TouchableOpacity style={[styles.chip, sortOrder === 'newest' ? { backgroundColor: colors.secondary, borderColor: colors.secondary } : { borderColor: colors.border }]} onPress={() => setSortOrder('newest')}>
+                <Text style={{ color: sortOrder === 'newest' ? colors.accent : colors.text, fontSize: 12, fontWeight: 'bold' }}>⬇️ 最新日期</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.chip, sortOrder === 'oldest' ? { backgroundColor: colors.secondary, borderColor: colors.secondary } : { borderColor: colors.border }]} onPress={() => setSortOrder('oldest')}>
+                <Text style={{ color: sortOrder === 'oldest' ? colors.accent : colors.text, fontSize: 12, fontWeight: 'bold' }}>⬆️ 最舊日期</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.chip, sortOrder === 'highest' ? { backgroundColor: colors.secondary, borderColor: colors.secondary } : { borderColor: colors.border }]} onPress={() => setSortOrder('highest')}>
+                <Text style={{ color: sortOrder === 'highest' ? colors.accent : colors.text, fontSize: 12, fontWeight: 'bold' }}>💰 金額高</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.chip, sortOrder === 'lowest' ? { backgroundColor: colors.secondary, borderColor: colors.secondary } : { borderColor: colors.border }]} onPress={() => setSortOrder('lowest')}>
+                <Text style={{ color: sortOrder === 'lowest' ? colors.accent : colors.text, fontSize: 12, fontWeight: 'bold' }}>🪙 金額低</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+
+          <View style={[styles.dividerLine, { backgroundColor: colors.divider }]} />
+          <Text style={[styles.panelSubtitle, { color: colors.textLight }]}>篩選條件</Text>
+          
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+              {hasFilter && <TouchableOpacity style={[styles.chip, { backgroundColor: colors.accent, borderColor: colors.accent }]} onPress={clearFilters}><Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>✕ 清除</Text></TouchableOpacity>}
+              {years.map(y => (
+                <TouchableOpacity key={y} style={[styles.chip, filterYear === y ? { backgroundColor: colors.primary, borderColor: colors.primary } : { borderColor: colors.border }]} onPress={() => setFilterYear(filterYear === y ? null : y)}>
+                  <Text style={{ color: filterYear === y ? '#FFF' : colors.text, fontSize: 12 }}>{y}年</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+              {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                <TouchableOpacity key={m} style={[styles.chip, filterMonth === m ? { backgroundColor: colors.primary, borderColor: colors.primary } : { borderColor: colors.border }]} onPress={() => setFilterMonth(filterMonth === m ? null : m)}>
+                  <Text style={{ color: filterMonth === m ? '#FFF' : colors.text, fontSize: 12 }}>{m}月</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2 }}>
+              {expenseRestaurants.map(r => (
+                <TouchableOpacity key={r.id} style={[styles.chip, filterRestId === r.id ? { backgroundColor: colors.primary, borderColor: colors.primary } : { borderColor: colors.border }]} onPress={() => setFilterRestId(filterRestId === r.id ? null : r.id)}>
+                  <Text style={{ color: filterRestId === r.id ? '#FFF' : colors.text, fontSize: 12 }}>{r.name.slice(0, 8)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         </View>
       )}
 
@@ -317,13 +379,8 @@ export default function ExpenseScreen({ navigation }: Props) {
           data={filteredExpenses} 
           keyExtractor={e => e.id}
           contentContainerStyle={{ paddingBottom: 24 }}
-          ListHeaderComponent={!searchText ? <ExpenseStats expenses={expenses} colors={colors} /> : null}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', marginTop: 40, gap: 8 }}>
-              <Text style={{ fontSize: 36 }}>🔍</Text>
-              <Text style={{ color: colors.textSecondary }}>找不到符合的記帳紀錄</Text>
-            </View>
-          }
+          ListHeaderComponent={<ExpenseStats expenses={filteredExpenses} colors={colors} isFiltered={hasFilter} filteredName={filteredRestName} />}
+          ListEmptyComponent={<View style={{ alignItems: 'center', marginTop: 40, gap: 8 }}><Text style={{ fontSize: 36 }}>🔍</Text><Text style={{ color: colors.textSecondary }}>找不到符合的記帳紀錄</Text></View>}
           renderItem={({ item }) => {
             const date = new Date(item.createdAt);
             const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
@@ -333,17 +390,15 @@ export default function ExpenseScreen({ navigation }: Props) {
                   <Text style={[d.dateTxt, { color: colors.textSecondary }]}>{dateStr}</Text>
                 </View>
                 <View style={d.body}>
-                  <Text style={[d.name, { color: colors.text }]}>{item.restaurantName}</Text>
+                  <TouchableOpacity onPress={() => setFilterRestId(item.restaurantId)}>
+                    <Text style={[d.name, { color: colors.text }]}>{item.restaurantName}</Text>
+                  </TouchableOpacity>
                   {Boolean(item.items) && <Text style={[d.items, { color: colors.textLight }]} numberOfLines={1}>{item.items}</Text>}
                 </View>
                 <Text style={[d.amount, { color: colors.accent }]}>${item.amount}</Text>
                 <View style={{ flexDirection: 'row', marginLeft: 12, gap: 10 }}>
-                  <TouchableOpacity onPress={() => handleOpenEdit(item)}>
-                    <Text style={{ fontSize: 16 }}>✏️</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                    <Text style={{ fontSize: 16, color: colors.textLight }}>✕</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleOpenEdit(item)}><Text style={{ fontSize: 16 }}>✏️</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { Alert.alert('刪除紀錄', '確定要刪除？', [{ text: '取消' }, { text: '刪除', style: 'destructive', onPress: () => deleteExpense(item.id) }]) }}><Text style={{ fontSize: 16, color: colors.textLight }}>✕</Text></TouchableOpacity>
                 </View>
               </View>
             );
@@ -356,16 +411,21 @@ export default function ExpenseScreen({ navigation }: Props) {
   );
 }
 
-// ─── 樣式設定 (完整還原版) ──────────────────────────────────────────
 const styles = StyleSheet.create({
   root:       { flex: 1 },
   appBar:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 52 },
   iconBtn:    { padding: 8 },
   title:      { flex: 1, fontSize: 18, fontWeight: 'bold', marginLeft: 4 },
   addBtn:     { padding: 8, borderRadius: 20 },
-  searchRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
+  searchRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1 },
   searchBox:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, height: 40, borderRadius: 12, borderWidth: 1 },
   searchInput:{ flex: 1, fontSize: 14 },
+  filterBtn:  { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  // ✅ 篩選面板樣式統一
+  filterPanel:{ paddingHorizontal: 12, paddingVertical: 14, borderBottomWidth: 1 },
+  panelSubtitle: { fontSize: 12, fontWeight: 'bold', marginBottom: 8, marginLeft: 2 },
+  dividerLine: { height: 1, marginVertical: 10, opacity: 0.5 },
+  chip:       { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
   empty:      { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold' },
   emptyHint:  { fontSize: 14, textAlign: 'center', lineHeight: 22 },
