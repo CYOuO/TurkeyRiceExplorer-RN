@@ -27,6 +27,9 @@
 * **資料持久化**：使用 AsyncStorage 確保日記、記帳與收藏資料在離線狀態下依然安全保存。
 ---
 ## 🛠 技術棧
+| 類別 | 技術/套件 |
+| :--- | :--- |
+
 |**開發框架**|React Native (TypeScript)|
 
 |**狀態管理**|React Context API (AppContext)|
