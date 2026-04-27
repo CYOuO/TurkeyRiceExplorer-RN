@@ -27,17 +27,15 @@
 * **資料持久化**：使用 AsyncStorage 確保日記、記帳與收藏資料在離線狀態下依然安全保存。
 ---
 ## 🛠 技術棧
-| 類別 | 技術/套件 |
-| :--- | :--- |
 
-| **開發框架** | React Native (TypeScript) |
+* **開發框架** : React Native (TypeScript)
 
-| **狀態管理** | React Context API (AppContext) |
+* **狀態管理** : React Context API (AppContext)
 
-| **導覽系統** | React Navigation (Drawer & Stack) |
+* **導覽系統** : React Navigation (Drawer & Stack)
 
-| **本地儲存** | @react-native-async-storage/async-storage |
+* **本地儲存** : @react-native-async-storage/async-storage
 
-| **動畫效果** | Animated API (包含 Native Driver 優化) |
+* **動畫效果** : Animated API (包含 Native Driver 優化)
 
-| **UI 組件** | React Native Paper / Vector Icons |
+* **UI 組件** : React Native Paper / Vector Icons
