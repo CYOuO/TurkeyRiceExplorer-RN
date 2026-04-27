@@ -60,8 +60,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const t = await AsyncStorage.getItem('isDark');
         if (t !== null) setIsDark(JSON.parse(t));
 
-        const f = await AsyncStorage.getItem('favorites');
-        if (f !== null) setFavorites(JSON.parse(f));
+        const f = await AsyncStorage.getItem('favorites');// 讀取收藏店家 ID 列表
+        if (f !== null) setFavorites(JSON.parse(f));// 這個列表只存 ID，實際店家資料從 restaurantData.js 來，這樣更新 App 時就不會有資料結構變動的問題
 
         const d = await AsyncStorage.getItem('diary');
         if (d !== null) setDiary(JSON.parse(d));
@@ -95,7 +95,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const isFavorite = useCallback((id: string) => favorites.includes(id), [favorites]);
+  const isFavorite = useCallback((id: string) => favorites.includes(id), [favorites]);// 
 
   const addDiaryEntry = useCallback(
     async (entry: Omit<DiaryEntry, 'id' | 'createdAt'>): Promise<string> => {

@@ -33,7 +33,7 @@ function getTagColor(tag: string) {
 function OpenBadge({ time, colors }: { time: string; colors: ColorScheme }) {
   const open = isOpenNow(time);
   return (
-    <View style={[badge.wrap, { backgroundColor: open ? colors.openBadgeBg : colors.closedBadgeBg }]}>
+    <View style={[badge.wrap, { backgroundColor: open ? colors.openBadgeBg : colors.closedBadgeBg }]}> 
       <View style={[badge.dot, { backgroundColor: open ? colors.openBadge : colors.closedBadge }]} />
       <Text style={[badge.text, { color: open ? colors.openBadge : colors.closedBadge }]}>
         {open ? '營業中' : '已打烊'}
@@ -107,7 +107,7 @@ const cs = StyleSheet.create({
   tagChipTxt: { fontSize: 10, fontWeight: '600' },
 });
 
-// ─── 圖片畫廊 ──────────────────────────────────────────────
+// ─── 圖片畫廊 ───
 function ImageGallery({ images, colors, onAllImages }: { images: string[]; colors: ColorScheme; onAllImages: () => void }) {
   const [current, setCurrent] = useState(0);
   return (
@@ -149,18 +149,18 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [filterOpen, setFilterOpen]     = useState(false);
   const [filterDay, setFilterDay]       = useState<number | null>(null);
-  const [filterFavorite, setFilterFavorite] = useState(false); // ✅ 我的收藏篩選
+  const [filterFavorite, setFilterFavorite] = useState(false); //我的收藏篩選
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortByRating, setSortByRating] = useState(false);
   const [selected, setSelected]         = useState<Restaurant | null>(null);
   const [dropdownVisible, setDropdownVisible] = useState(false);
 
-  const ALL_TAGS = useMemo(() => Array.from(new Set(restaurants.flatMap(r => r.tags))), []);
+  const ALL_TAGS = useMemo(() => Array.from(new Set(restaurants.flatMap(r => r.tags))), []);// 所有存在的標籤列表
 
-  // ✅ 判斷是否有任何篩選正在進行 (包含搜尋、星等、收藏、營業狀態)
+  // 判斷是否有任何篩選正在進行 (包含搜尋、星等、收藏、營業狀態)
   const isFilterActive = filterOpen || filterDay !== null || filterFavorite || selectedTags.length > 0 || sortByRating || appliedSearch.length > 0;
 
-  // ✅ 清除所有篩選條件與搜尋
+  // 清除所有篩選條件與搜尋
   const clearAllFilters = () => {
     setFilterOpen(false);
     setFilterDay(null);
@@ -172,7 +172,7 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
     setSelected(null);
   };
 
-  useEffect(() => {
+  useEffect(() => {// 根據傳入的餐廳 ID 或預選 ID 來設定初始選擇的餐廳，這樣從其他頁面點擊進來時就能直接看到該餐廳的詳細資訊
     const targetId = route.params?.restaurantId || (route.params as any)?.preselect;
     if (targetId) {
       const target = restaurants.find(r => r.id === targetId);
@@ -180,12 +180,13 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
     }
   }, [route.params]);
 
-  const filtered = useMemo(() => {
+  const filtered = useMemo(() => {// 根據搜尋、營業狀態、營業日、收藏狀態、標籤和排序條件過濾餐廳列表
     let result = restaurants.filter(r => {
-      if (appliedSearch && !r.name.includes(appliedSearch) && !r.address.includes(appliedSearch)) return false;
+      if (appliedSearch && !r.name.includes(appliedSearch) && !r.address.includes(appliedSearch)) 
+        return false;
       if (filterOpen && !isOpenNow(r.time)) return false;
       if (filterDay !== null && !isOpenOnDay(r.time, filterDay)) return false;
-      if (filterFavorite && !isFavorite(r.id)) return false; // ✅ 套用收藏過濾
+      if (filterFavorite && !isFavorite(r.id)) return false;
       if (selectedTags.length > 0) {
         const hasAllTags = selectedTags.every(tag => r.tags.includes(tag));
         if (!hasAllTags) return false;
@@ -200,10 +201,10 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
     return result;
   }, [appliedSearch, filterOpen, filterDay, selectedTags, sortByRating, filterFavorite, isFavorite]);
 
-  const handleSearch = () => { setAppliedSearch(search.trim()); setSelected(null); };
+  const handleSearch = () => { setAppliedSearch(search.trim()); setSelected(null); };// 將搜尋字串套用到過濾器，並清除目前選擇的餐廳以顯示搜尋結果列表
   const clearSearch  = () => { setSearch(''); setAppliedSearch(''); setSelected(null); };
 
-  const renderDropdownModal = () => (
+  const renderDropdownModal = () => (// 顯示符合搜尋條件的餐廳清單，讓使用者選擇
     <Modal visible={dropdownVisible} transparent animationType="slide" onRequestClose={() => setDropdownVisible(false)}>
       <TouchableOpacity style={ms.overlay} onPress={() => setDropdownVisible(false)} activeOpacity={1}>
         <View style={[ms.sheet, { backgroundColor: colors.surface }]}>
@@ -309,10 +310,10 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
       <View style={[styles.appBar, { backgroundColor: colors.header }]}>
         <TouchableOpacity onPress={() => (navigation as any).openDrawer()} style={styles.iconBtn}><Text style={{ fontSize: 22, color: colors.headerText }}>☰</Text></TouchableOpacity>
         
-        {/* ✅ 不改變原本排版：直接在原本的 Text 上加上 onPress 恢復清單 */}
+        {/* 原本的 Text 上加上 onPress 恢復清單 */}
         <Text style={[styles.appBarTitle, { color: colors.headerText }]} onPress={() => setSelected(null)}>探索店家</Text>
         
-        {/* ✅ 右側清除按鈕：只有在有套用篩選時才出現 */}
+        {/* 右側清除按鈕：只有在有套用篩選時才出現 */}
         {isFilterActive && (
           <TouchableOpacity onPress={clearAllFilters} style={styles.iconBtn}><Text style={{ color: colors.headerText, fontSize: 13, fontWeight: 'bold' }}>全部</Text></TouchableOpacity>
         )}
@@ -372,7 +373,7 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
             <Text style={[styles.chipTxt, { color: filterFavorite ? '#FFF' : colors.text }]}>❤️ 我的收藏</Text>
           </TouchableOpacity>
           
-          {/* ✅ 接著 map 出所有的標籤 */}
+          {/* 接著 map 出所有的標籤 */}
           {ALL_TAGS.map(tag => {
             const isActive = selectedTags.includes(tag);
             const tColor = getTagColor(tag);
@@ -419,7 +420,7 @@ export default function RestaurantInfoScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create({// --- 主畫面基本結構 ---
   root:        { flex: 1 },
   appBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 52 },
   iconBtn:     { padding: 8 },
@@ -435,7 +436,7 @@ const styles = StyleSheet.create({
   dropdownTxt: { flex: 1, fontSize: 15 },
 });
 
-const ms = StyleSheet.create({
+const ms = StyleSheet.create({// --- 圖片選擇下拉清單的樣式 ---
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet:   { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 12, paddingBottom: 30, maxHeight: '80%' },
   handle:  { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
@@ -446,7 +447,7 @@ const ms = StyleSheet.create({
   itemAddr:{ fontSize: 12 },
 });
 
-const ds = StyleSheet.create({
+const ds = StyleSheet.create({// --- 店家詳細資訊頁的樣式 ---
   pad:       { padding: 20 },
   header:    { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
   name:      { fontSize: 22, fontWeight: 'bold', marginBottom: 6 },

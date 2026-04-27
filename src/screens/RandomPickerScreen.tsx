@@ -18,7 +18,7 @@ export default function RandomPickerScreen({ navigation }: Props) {
   const { colors } = useApp();
   const [picked,   setPicked]   = useState<Restaurant | null>(null);
   const [spinning, setSpinning] = useState(false);
-  const spinAnim = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;// 用於控制轉盤旋轉的動畫值
 
   const openNow = restaurants.filter(r => isOpenNow(r.time));
 
@@ -27,7 +27,7 @@ export default function RandomPickerScreen({ navigation }: Props) {
     setSpinning(true);
     setPicked(null);
     spinAnim.setValue(0);
-    Animated.timing(spinAnim, {
+    Animated.timing(spinAnim, { // 轉盤旋轉動畫
       toValue: 1,
       duration: 1200,
       easing: Easing.out(Easing.cubic),

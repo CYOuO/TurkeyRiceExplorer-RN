@@ -7,8 +7,10 @@ import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { DrawerParamList } from '../../App';
 import { useApp } from '../context/AppContext';
 import { lightColors } from '../theme/colors'; // 引入固定的日間模式顏色
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { HomeStackParamList } from '../../App';
 
-type Props = DrawerScreenProps<DrawerParamList, 'HomeStack'>;
+type Props = StackScreenProps<HomeStackParamList, 'Home'>;
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,21 +22,21 @@ const QUICK_LINKS = [
 
 const FLOAT_ITEMS = ['⭐', '🍚', '🍚', '⭐'];
 
-export default function HomeScreen({ navigation }: Props) {
+export default function HomeScreen({ navigation, route }: Props) {
   const { triggerTransition } = useApp();
 
   // 漂浮動畫
   const floatAnims = useRef(FLOAT_ITEMS.map(() => new Animated.Value(0))).current;
 
-  useEffect(() => {
+  useEffect(() => {// 啟動漂浮動畫，並錯開每個圖示的開始時間
     floatAnims.forEach((anim, i) => {
       const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(anim, { toValue: 1, duration: 2200 + i * 300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          Animated.timing(anim, { toValue: 0, duration: 2200 + i * 300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.sequence([// 上升和淡入，然後下降和淡出
+          Animated.timing(anim, { toValue: 1, duration: 2200 + i * 300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),// 上升和淡入
+          Animated.timing(anim, { toValue: 0, duration: 2200 + i * 300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),// 下降和淡出
         ])
       );
-      setTimeout(() => loop.start(), i * 400);
+      setTimeout(() => loop.start(), i * 400);//用 setTimeout 錯開每個圖示的開始時間，創造更自然的漂浮效果
     });
   }, []);
 
@@ -51,7 +53,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   const handleStart = () => {
     triggerTransition();
-    setTimeout(() => navigation.navigate('HomeStack', { screen: 'RestaurantInfo' }as never), 500);
+    setTimeout(() => navigation.navigate('RestaurantInfo' ), 500);
   };
 
   const FLOAT_POSITIONS = [
@@ -72,8 +74,8 @@ export default function HomeScreen({ navigation }: Props) {
 
         {/* 漂浮 emoji */}
         {FLOAT_ITEMS.map((icon, i) => {
-          const translateY = floatAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0, -14] });
-          const opacity    = floatAnims[i].interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.25, 0.55, 0.25] });
+          const translateY = floatAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0, -14] });// 上升
+          const opacity    = floatAnims[i].interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.25, 0.55, 0.25] }); // 淡入淡出效果
           return (
             <Animated.Text
               key={i}

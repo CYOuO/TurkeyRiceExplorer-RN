@@ -31,8 +31,7 @@ export type DrawerParamList = {
   Expense: undefined;
 };
 
-// ─── 2. 引入各個 Screen (路徑需對應你的 src/screens 目錄) ────
-// 即使後續檔案是 .js，這裡也不需要寫副檔名
+// ─── 2. 引入各個 Screen ────
 import HomeScreen           from './src/screens/HomeScreen';
 import RestaurantInfoScreen from './src/screens/RestaurantInfoScreen';
 import ImageOverviewScreen  from './src/screens/ImageOverviewScreen';

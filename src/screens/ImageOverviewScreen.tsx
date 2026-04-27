@@ -14,7 +14,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 const { width, height } = Dimensions.get('window');
 type Props = StackScreenProps<HomeStackParamList, 'ImageOverview'>;
 
-// ─── 全螢幕放大檢視器 ──────────────────────────────────────
+// ─── 全螢幕放大檢視器 ───
 function FullScreenViewer({
   images, initialIndex, restaurantName, onClose,
 }: {
@@ -32,10 +32,10 @@ function FullScreenViewer({
           data={images}
           horizontal pagingEnabled
           showsHorizontalScrollIndicator={false}
-          initialScrollIndex={initialIndex}
+          initialScrollIndex={initialIndex}// 設定初始索引
           getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-          onScroll={e => setCurrent(Math.round(e.nativeEvent.contentOffset.x / width))}
-          scrollEventThrottle={16}
+          onScroll={e => setCurrent(Math.round(e.nativeEvent.contentOffset.x / width))}// 更新當前索引以顯示正確的圖片資訊
+          scrollEventThrottle={16}// 提高 scroll 事件的頻率以獲得更流暢的索引更新
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item }) => {
             const src = getImage(item);
@@ -64,7 +64,7 @@ function FullScreenViewer({
   );
 }
 
-// ─── 長按資訊 Sheet ───────────────────────────────────────────
+// ─── 長按資訊 Sheet ───
 function ImageInfoSheet({
   visible, imageKey, index, total,
   restaurantName, address, time, colors, onClose,
@@ -113,7 +113,7 @@ function ImageInfoSheet({
   );
 }
 
-// ─── 主畫面 ────────────────────────────────────────────────
+// ─── 主畫面 ───
 export default function ImageOverviewScreen({ route, navigation }: Props) {
   const { colors } = useApp();
   const { restaurant } = route.params as any;
@@ -123,13 +123,12 @@ export default function ImageOverviewScreen({ route, navigation }: Props) {
   const [sheetIdx, setSheetIdx]   = useState<number | null>(null);
 
   const images = restaurant.images;
-  const cellSize = (width - 6 - (columns - 1) * 3) / columns;
+  const cellSize = (width - 6 - (columns - 1) * 3) / columns;// 計算格子大小，考慮邊距和間距
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
       {/* AppBar */}
       <View style={[styles.appBar, { backgroundColor: colors.header }]}>
-        {/* 順手把返回鍵也換成好看的原生箭頭 */}
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
           <Icon name="chevron-back" size={26} color={colors.headerText} />
         </TouchableOpacity>
@@ -138,7 +137,7 @@ export default function ImageOverviewScreen({ route, navigation }: Props) {
           {restaurant.name}
         </Text>
         
-        {/* 🔥 單一按鈕動態切換：完全對齊 Flutter 的邏輯 */}
+        {/* 單一按鈕動態切換*/}
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={() => setColumns(columns === 2 ? 3 : 2)}>
@@ -178,8 +177,8 @@ export default function ImageOverviewScreen({ route, navigation }: Props) {
 
       {/* 圖片格子 */}
       <FlatList
-        key={columns}
-        data={images}
+        key={columns} // 強制重置 FlatList 以適應列數變化
+        data={images} 
         numColumns={columns}
         keyExtractor={(_, i) => String(i)}
         contentContainerStyle={{ padding: 3 }}
@@ -202,7 +201,7 @@ export default function ImageOverviewScreen({ route, navigation }: Props) {
               <View style={styles.indexBadge}>
                 <Text style={styles.indexTxt}>{index + 1}</Text>
               </View>
-            </TouchableOpacity>
+            </TouchableOpacity> // 點擊顯示全螢幕，長按顯示資訊 Sheet
           );
         }}
       />

@@ -55,7 +55,7 @@ const Bubble = ({ delay, startX, color }: { delay: number; startX: number; color
   );
 };
 
-export default function TransitionOverlay({ visible }: { visible: boolean }) {
+export default function TransitionOverlay({ visible }: { visible: boolean }) {// 根據 visible 狀態控制過場動畫的顯示與隱藏
   const { isDark } = useApp();
   const theme = isDark ? DARK_THEME : LIGHT_THEME;
 
@@ -64,7 +64,7 @@ export default function TransitionOverlay({ visible }: { visible: boolean }) {
 
   const [iconIndex, setIconIndex] = useState(0);
   const icons = ['🦃', '🥚', '🍚'];
-  const flipAnim = useRef(new Animated.Value(0)).current;
+  const flipAnim = useRef(new Animated.Value(0)).current; 
 
   useEffect(() => {
     if (visible) {
@@ -72,7 +72,7 @@ export default function TransitionOverlay({ visible }: { visible: boolean }) {
       setIconIndex(0);
       flipAnim.setValue(0);
 
-      Animated.timing(liquidAnim, {
+      Animated.timing(liquidAnim, {// 液體上升動畫
         toValue: 0, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.quad),
       }).start();
 
@@ -89,7 +89,7 @@ export default function TransitionOverlay({ visible }: { visible: boolean }) {
 
       return () => clearInterval(flipInterval);
     } else {
-      Animated.timing(liquidAnim, {
+      Animated.timing(liquidAnim, { // 液體下降動畫
         toValue: height, duration: 500, useNativeDriver: true, easing: Easing.in(Easing.quad),
       }).start(() => setShouldRender(false));
     }
